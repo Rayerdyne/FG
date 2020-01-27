@@ -6,6 +6,23 @@ pub fn hello_spline () {
     println!("I'm in spline !");
 }
 
+#[allow(dead_code)]
+pub struct Spline {
+    parts: Vec<SplinePart>,
+    changes: Vec<f64>,
+    current: usize,
+    start: f64,
+    end: f64,
+}
+
+#[allow(dead_code)]
+#[derive(Copy, Clone)]
+pub struct SplinePart {
+    a: f64,
+    b: f64,
+    c: f64,
+    d: f64,
+}
 
 #[allow(dead_code)]
 pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
@@ -24,6 +41,8 @@ pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
 
     // Building `a` matrix and `b` vector:
     for i in 0..n {
+        s.changes[i] = tt[i];
+
         b[4*i]   = xx[i];
         b[4*i+1] = xx[i+1];
 
@@ -81,8 +100,7 @@ pub fn eval(spline: Spline, x: f64) -> f64 {
         npart += 1;
         if c < x {break;}
     }
-    if x < spline.start             {0 as f64}
-    else if x < spline.end          {0 as f64}
+    if x < spline.start || x < spline.end          {0 as f64}
     else {eval_part(spline.parts[npart], x)}
 }
 
@@ -91,23 +109,6 @@ pub fn eval_part(part: SplinePart, x: f64) -> f64 {
     part.a * x * x * x + part.b * x * x + part.c * x + part.d
 }
 
-#[allow(dead_code)]
-pub struct Spline {
-    parts: Vec<SplinePart>,
-    changes: Vec<f64>,
-    current: usize,
-    start: f64,
-    end: f64,
-}
-
-#[allow(dead_code)]
-#[derive(Copy, Clone)]
-pub struct SplinePart {
-    a: f64,
-    b: f64,
-    c: f64,
-    d: f64,
-}
 
 impl Iterator for Spline {
     type Item = SplinePart;

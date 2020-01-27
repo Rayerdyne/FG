@@ -41,7 +41,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "fg"
 version = "0.1.0"
 dependencies = [
- "approx 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.19.0",
 ]
 
