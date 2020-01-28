@@ -1,12 +1,26 @@
 use std::fs::File;
 use std::io::Read;
-
 use std::str::FromStr;
+use std::fmt;
 use std::num::ParseFloatError;
 
 pub enum ReadingError {
     ParseError(ParseFloatError),
     FileStreamError(std::io::Error),
+    NotEnoughPoints,
+}
+
+impl fmt::Display for ReadingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ReadingError::ParseError(e) =>
+                { write!(f, "Parsing error: {}", e)        }
+            ReadingError::FileStreamError(e) => 
+                { write!(f, "File stream error: {}", e)    }
+            ReadingError::NotEnoughPoints =>
+                { write!(f, "Not enough points !")         }
+        }
+    }
 }
 
 struct Point {
@@ -15,6 +29,7 @@ struct Point {
     t: f64,
 }
 
+#[allow(dead_code)]
 pub struct PointsSet {
     xx: Vec<f64>,
     yy: Vec<f64>,
@@ -42,10 +57,16 @@ impl FromStr for Point {
 }
 
 impl FromStr for PointsSet {
-    type Err = ParseFloatError;
+    type Err = ReadingError;
 
-    fn from_str(s: &str) -> Result<PointsSet, ParseFloatError> {
-        let points_data: Vec<&str> = s.split('\n').collect();
+    fn from_str(s: &str) -> Result<PointsSet, ReadingError> {
+        let points_data: Vec<&str> = s.split('\n')
+                                      .filter(|s| !s.is_empty())
+                                      .collect();
+        // println!("{:?}", points_data);
+        if points_data.len() < 2 {
+            return Err(ReadingError::NotEnoughPoints)
+        }
 
         let mut parsed_xx = Vec::<f64>::new();
         let mut parsed_yy = Vec::<f64>::new();
@@ -59,7 +80,7 @@ impl FromStr for PointsSet {
                     parsed_yy.push(point.y);
                     parsed_tt.push(point.t);
                 }
-                Err(e) => return Err(e)
+                Err(e) => return Err(ReadingError::ParseError(e))
             }
         }
 
@@ -69,6 +90,13 @@ impl FromStr for PointsSet {
             tt: parsed_tt,
         })
     }
+}
+
+#[allow(dead_code)]
+impl PointsSet {
+    pub fn get_xx(&self)->Vec<f64> {    self.xx.clone()     }
+    pub fn get_yy(&self)->Vec<f64> {    self.yy.clone()     }
+    pub fn get_tt(&self)->Vec<f64> {    self.tt.clone()     }
 }
 
 impl std::convert::From<std::io::Error> for ReadingError {
@@ -83,6 +111,7 @@ impl std::convert::From<ParseFloatError> for ReadingError {
     }
 }
 
+#[allow(dead_code)]
 pub fn read_file (filename: &str) -> Result<PointsSet, ReadingError> {
     let mut f = File::open(filename)?;
     let mut data = String::new();
