@@ -4,7 +4,7 @@ use na::{DMatrix, DVector};
 use std::fmt;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Spline {
     parts: Vec<SplinePart>,
     changes: Vec<f64>,
@@ -22,30 +22,16 @@ pub struct SplinePart {
     d: f64,
 }
 
-#[allow(dead_code)]
-pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
-    assert_eq!(xx.len(), tt.len());
-    let n = xx.len();
-    let mut s = Spline {parts: Vec::new(),
-                        changes: Vec::new(),
-                        current: 0, start: xx[0],
-                        end: xx[xx.len()-1]};
-
+fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
+    let n = tt.len();
     let mut a: DMatrix<f64> = DMatrix::zeros(4*(n-1), 4*(n-1));
-    let mut b: DVector<f64> = DVector::zeros(4*(n-1));
 
     let mut t1_squared: f64 = tt[0] * tt[0];
     let mut t1_cubed:   f64 = t1_squared * tt[0];
     let mut t2_squared: f64 = tt[1] * tt[1];
     let mut t2_cubed:   f64 = t2_squared * tt[1];
 
-    // Building `a` matrix and `b` vector:
     for i in 0..(n-1) {
-        s.changes.push(tt[i]);
-
-        b[4*i]   = xx[i];
-        b[(4*i+1)] = xx[(i+1)];
-
         if i >= 1 {
             t1_squared = t2_squared;
             t1_cubed = t2_cubed;
@@ -83,6 +69,28 @@ pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
             a[(4*i+3, 4*i+7)] = -1 as f64;
         }
     }
+    a
+}
+
+#[allow(dead_code)]
+pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
+    assert_eq!(xx.len(), tt.len());
+    let n = xx.len();
+    let mut s = Spline {parts: Vec::new(),
+                        changes: Vec::new(),
+                        current: 0, start: xx[0],
+                        end: xx[xx.len()-1]};
+
+    let a: DMatrix<f64> = matrix_for(&tt);
+    let mut b: DVector<f64> = DVector::zeros(4*(n-1));
+
+    // Building `b` vector:
+    for i in 0..(n-1) {
+        s.changes.push(tt[i]);
+
+        b[4*i]   = xx[i];
+        b[(4*i+1)] = xx[(i+1)];
+    };
 
     // println!("{}{}", a, b);
     let dec = a.lu();// critical point lol
@@ -97,8 +105,45 @@ pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
             d: x[4*i+3],
         });
     }
-
     s
+}
+
+#[allow(dead_code)]
+pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
+    let n = tt.len();
+    let count = xxx.len();
+    let a = matrix_for(&tt);
+    let dec = a.lu();
+
+    let mut ss = Vec::new();
+
+    for i in 0..count {
+        ss.push(  Spline {parts: Vec::new(),
+                          changes: Vec::new(),
+                          current: 0, start: xxx[i][0],
+                          end: xxx[i][xxx[i].len()-1]    });
+    
+        let mut b: DVector<f64> = DVector::zeros(4*(n-1));
+        // Building `b` vector:
+        for j in 0..(n-1) {
+            ss[i].changes.push(tt[j]);
+
+            b[4*i]   = xxx[i][j];
+            b[(4*i+1)] = xxx[i][(j+1)];
+        };
+
+        let x = dec.solve(&b).expect("Computation of spline's coefficients failed !");
+        // println!("{}", x);
+        for i in 0..(n-1) {
+            ss[i].parts.push(SplinePart{
+                a: x[4*i],
+                b: x[4*i+1],
+                c: x[4*i+2],
+                d: x[4*i+3],
+            });
+        }
+    };
+    ss
 }
 
 #[allow(dead_code)]
@@ -136,7 +181,7 @@ impl fmt::Display for Spline {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut i: usize = 0;
         for sp in self.parts.clone() {
-            write!(f, "Part {}) [t: {}]  {}x³ + {}x² + {}x + {}", 
+            write!(f, "Part {}) [t: {:+.4e}]  {:+.4e}x³ + {:+.4e}x² + {:+.4e}x + {:+.4e}\n", 
                         i+1, self.changes[i], sp.a, sp.b, sp.c, sp.d)?;
             i += 1;
         };

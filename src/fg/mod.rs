@@ -32,9 +32,11 @@ pub fn read(args: Vec<String>) -> Result<(), FgError> {
     if args.len() <= 1 {    return Err(FgError::ArgError)   }
     
     let set = read::read_file(&args[1])?;
-    let sx = spline::interpolate(set.get_xx(), set.get_tt());
-    let sy = spline::interpolate(set.get_yy(), set.get_tt());
-    println!("sx: {}", sx);
-    println!("sy: {}", sy);
+
+    let ss = spline::interpolate_coords(vec![set.get_xx(), set.get_yy()], set.get_tt());
+    let sx = ss[0].clone();
+    let sy = ss[1].clone();
+    println!("sx:\n {}", sx);
+    println!("sy:\n {}", sy);
     Ok(())
 }
