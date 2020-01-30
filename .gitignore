@@ -1,2 +1,4 @@
 /target
 **/*.rs.bk
+/old
+src/test/rs

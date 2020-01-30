@@ -91,6 +91,7 @@ pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
         b[4*i]   = xx[i];
         b[(4*i+1)] = xx[(i+1)];
     };
+    s.changes.push(tt[n-1]);
 
     // println!("{}{}", a, b);
     let dec = a.lu();// critical point lol
@@ -118,10 +119,11 @@ pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
     let mut ss = Vec::new();
 
     for i in 0..count {
+        assert_eq!(n, xxx[i].len());
         ss.push(  Spline {parts: Vec::new(),
                           changes: Vec::new(),
                           current: 0, start: xxx[i][0],
-                          end: xxx[i][xxx[i].len()-1]    });
+                          end: xxx[i][n-1]    });
     
         let mut b: DVector<f64> = DVector::zeros(4*(n-1));
         // Building `b` vector:
@@ -131,6 +133,7 @@ pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
             b[4*i]   = xxx[i][j];
             b[(4*i+1)] = xxx[i][(j+1)];
         };
+        ss[i].changes.push(tt[n-1]);
 
         let x = dec.solve(&b).expect("Computation of spline's coefficients failed !");
         // println!("{}", x);
@@ -187,4 +190,21 @@ impl fmt::Display for Spline {
         };
         Ok(())
     }
+}
+
+#[allow(dead_code)]
+impl Spline {
+    pub fn start(&self) -> f64 {self.start}
+    pub fn end(&self)   -> f64 {self.end}
+    pub fn part(&self, i: usize) -> SplinePart {self.parts[i]}
+    pub fn changes(&self) -> Vec<f64> {self.changes.clone()}
+    pub fn num_parts(&self) -> usize {self.parts.len()}
+}
+
+#[allow(dead_code)]
+impl SplinePart {
+    pub fn geta(&self) -> f64 {self.a}
+    pub fn getb(&self) -> f64 {self.b}
+    pub fn getc(&self) -> f64 {self.c}
+    pub fn getd(&self) -> f64 {self.d}
 }
