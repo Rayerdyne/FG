@@ -40,3 +40,7 @@ pub fn read(args: Vec<String>) -> Result<(), FgError> {
     println!("sy:\n {}", sy);
     Ok(())
 }
+
+pub fn test_gif(a: usize, b: usize, c: usize, d: usize) {
+    gif::gotest(a, b, c, d);
+}
