@@ -6,19 +6,22 @@ use std::num::ParseFloatError;
 
 pub enum ReadingError {
     ParseError(ParseFloatError),
-    FileStreamError(std::io::Error),
+    FileStreamError(std::io::Error, String),
     NotEnoughPoints,
+    IllFormedCoeffs,
 }
 
 impl fmt::Display for ReadingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ReadingError::ParseError(e) =>
-                { write!(f, "Parsing error: {}", e)        }
-            ReadingError::FileStreamError(e) => 
-                { write!(f, "File stream error: {}", e)    }
+                { write!(f, "Parsing error: {}", e)                        }
+            ReadingError::FileStreamError(e, filename) => 
+                { write!(f, "File stream error in `{}`: {}", filename, e)  }
             ReadingError::NotEnoughPoints =>
-                { write!(f, "Not enough points !")         }
+                { write!(f, "Not enough points !")                         }
+            ReadingError::IllFormedCoeffs =>
+                { write!(f, "Specified file is ill-formed !")              }
         }
     }
 }
@@ -94,15 +97,9 @@ impl FromStr for PointsSet {
 
 #[allow(dead_code)]
 impl PointsSet {
-    pub fn get_xx(&self)->Vec<f64> {    self.xx.clone()     }
-    pub fn get_yy(&self)->Vec<f64> {    self.yy.clone()     }
-    pub fn get_tt(&self)->Vec<f64> {    self.tt.clone()     }
-}
-
-impl std::convert::From<std::io::Error> for ReadingError {
-    fn from(e: std::io::Error) -> ReadingError {
-        ReadingError::FileStreamError(e)
-    }
+    pub fn xx(&self)->Vec<f64> {    self.xx.clone()     }
+    pub fn yy(&self)->Vec<f64> {    self.yy.clone()     }
+    pub fn tt(&self)->Vec<f64> {    self.tt.clone()     }
 }
 
 impl std::convert::From<ParseFloatError> for ReadingError {
@@ -112,13 +109,70 @@ impl std::convert::From<ParseFloatError> for ReadingError {
 }
 
 #[allow(dead_code)]
-pub fn read_file (filename: &str) -> Result<PointsSet, ReadingError> {
-    let mut f = File::open(filename)?;
+pub fn read_file(filename: & str) -> Result<PointsSet, ReadingError> {
+    let mut f = match File::open(filename) {
+        Err(e) => return Err(ReadingError::FileStreamError(e, String::from(filename))),
+        Ok(f) => f,
+    };
+
     let mut data = String::new();
-    f.read_to_string(&mut data)?;
+    if let  Err(e) = f.read_to_string(&mut data) {
+        return Err(ReadingError::FileStreamError(e, String::from(filename)));
+    }
 
     let set = PointsSet::from_str(&mut data)?;
     Ok(set)
+}
+
+
+struct Complex {
+    a: f64,
+    b: f64,
+}
+
+impl FromStr for Complex {
+    type Err = ReadingError;
+
+    fn from_str(s: &str) -> Result<Complex, ReadingError> {
+        let parts: Vec<&str> = s.trim_matches( |c| c == '(' || c == ')' )
+                                .split(',').collect();
+        let parsed_a: f64 = parts[0].trim().parse::<f64>()?;
+        let parsed_b = parts[1].trim().parse::<f64>()?;
+        Ok(Complex {
+            a: parsed_a,
+            b: parsed_b  })
+    }
+}
+
+#[allow(dead_code)]
+pub fn read_fourier_coeffs (filename: &str) 
+        -> Result<(Vec<[f64; 2]>, Vec<[f64; 2]>), ReadingError> {
+    let mut f = match File::open(filename) {
+        Err(e) => return Err(ReadingError::FileStreamError(e, String::from(filename))),
+        Ok(f) => f,
+    };
+
+    let mut data = String::new();
+    if let  Err(e) = f.read_to_string(&mut data) {
+        return Err(ReadingError::FileStreamError(e, String::from(filename)));
+    }
+
+    let lines: Vec<&str> =  data.split('\n')
+                                .filter(|s| !s.is_empty())
+                                .collect();
+
+    let mut ppos = Vec::<[f64; 2]>::new();
+    let mut nneg = Vec::<[f64; 2]>::new();
+    for line in lines {
+        let parts: Vec<&str> = line.split(' ').collect();
+        if parts.len() < 2 {   return Err(ReadingError::IllFormedCoeffs)   }
+        let cp = Complex::from_str(parts[0])?;
+        let cn = Complex::from_str(parts[1])?;
+        ppos.push([cp.a, cp.b]);
+        nneg.push([cn.a, cn.b]);
+        };
+
+    Ok((ppos, nneg))
 }
 
 

@@ -44,8 +44,8 @@ fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
     let yi2 = if yi > tabh {  tabh  } else {  yi  };
     let yf2 = if yf > tabh {  tabh  } else {  yf  };
 
-    assert!(xi <= tabh && xf <= tabh);
-    assert!(yi <= tabw && yf <= tabw);
+    assert!(xi2 <= tabw && xf2 <= tabw);
+    assert!(yi2 <= tabh && yf2 <= tabh);
     let (x1, x2, x_inversed) = if xf2 < xi2 { (xf2, xi2, true)   } 
                                else {       (xi2, xf2, false)  };
     let (y1, y2, y_inversed) = if yf2 < yi2 { (yf2, yi2, true)   }
@@ -156,13 +156,14 @@ pub fn draw_fourier_coeff(coeffs: (Vec<[f64; 2]>, Vec<[f64; 2]>),
             let coeff = (p_coeffs[k], n_coeffs[k]);
             for (c, neg) in vec![(coeff.0, false),
                                  (coeff.1, true) ] {
-                let sin1 = if neg {   (k_f64*t).sin()  }
-                           else   {  -(k_f64*t).sin()  };
+                let sin1 = if neg {  -(k_f64*t).sin()  }
+                           else   {   (k_f64*t).sin()  };
                 let cos1 = (k_f64*t).cos();
                 //   (a+ib)*(cos + i sin)
                 // = a cos - b sin + i (a sin + b cos)
                 x2 = x1 + (c[0]*cos1 - c[1]*sin1);
-                y2 = y1 + (c[0]*sin1 + c[1]*cos1);
+                y2 = y1 - (c[0]*sin1 + c[1]*cos1);
+                // Y axis is multiplied by -1 to make the circle drawed anticlockwise 
                 draw_line(x1 as usize, y1 as usize, x2 as usize, y2 as usize, 1,
                     &mut *tab_lines, w, h);
                 x1 = x2;
