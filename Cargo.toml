@@ -9,4 +9,5 @@ edition = "2018"
 
 [dependencies]
 nalgebra = {version = "0.19.0", path = "../nalgebra"}
-gif = {version = "0.10.3"}
+gif = "0.10.3"
+clap = "2.33.0"
