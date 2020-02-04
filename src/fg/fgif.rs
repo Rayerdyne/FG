@@ -6,7 +6,7 @@ use std::io::Error;
 use std::f64::{self, consts::PI};
 use std::borrow::Cow;
 
-use super::fourier::{Complex, CoeffsSet};
+use super::fourier::CoeffsSet;
 
 #[allow(dead_code)]
 struct MyGif<'a> {
@@ -154,9 +154,9 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str,
 
         let mut k_f64: f64 = 1.0_f64;
         for k in 0..n {
-            let coeff = (coeffs.ppos[k], coeffs.nneg[k]);
-            for (c, neg) in vec![(coeff.0, false),
-                                 (coeff.1, true) ] {
+            let coeff_pn = (coeffs.ppos[k], coeffs.nneg[k]);
+            for (c, neg) in vec![(coeff_pn.0, false),
+                                 (coeff_pn.1, true) ] {
                 let sin1 = if neg {  -(k_f64*t).sin()  }
                            else   {   (k_f64*t).sin()  };
                 let cos1 = (k_f64*t).cos();

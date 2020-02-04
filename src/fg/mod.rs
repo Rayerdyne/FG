@@ -52,7 +52,7 @@ pub fn parse() -> Result<(), FgError> {
             .author("François Straet")
             .about("Drawings with Fourier series")
             .arg(Arg::with_name("input")
-                .help("Sets the input file (containing the points of the drawing: `t: (x, y)`")
+                .help("Sets the input file, containing the points of the drawing formatted as: `t: (x, y)`")
                 .required(true)
                 .index(1))
             .arg(Arg::with_name("output")
@@ -79,9 +79,9 @@ pub fn parse() -> Result<(), FgError> {
                 .short("H")
                 .long("gifheight")
                 .takes_value(true)
-                .help("Sets the output's width"))
+                .help("Sets the output's height"))
             .arg(Arg::with_name("coeffs")
-                .help("Ouputs drawing of custom Fourier coefficients in the input")
+                .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as `(c_k re, c_k im)&(c_-k re, c_-k im)`")
                 .long("coeffs")
                 .short("c"))
             .get_matches();
@@ -103,7 +103,6 @@ pub fn parse() -> Result<(), FgError> {
     let coeffs_only = match matches.occurrences_of("coeffs"){
         0 => false,
         _ => true, };
-    println!("shut up warning {}", coeffs_only);// shut up warning
 
     if coeffs_only {
         let coeffs = read::read_fourier_coeffs(input)?;

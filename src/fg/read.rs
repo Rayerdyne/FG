@@ -68,7 +68,6 @@ impl FromStr for PointsSet {
         let points_data: Vec<&str> = s.split('\n')
                                       .filter(|s| !s.is_empty())
                                       .collect();
-        // println!("{:?}", points_data);
         if points_data.len() < 2 {
             return Err(ReadingError::NotEnoughPoints)
         }
@@ -114,7 +113,6 @@ impl FromStr for Complex {
     type Err = ReadingError;
 
     fn from_str(s: &str) -> Result<Complex, ReadingError> {
-        println!("s: {}", s);
         let parts: Vec<&str> = s.trim_matches( |c| c == '(' || c == ')' )
                                 .split(',').collect();
         let parsed_a: f64 = parts[0].trim().parse::<f64>()?;
