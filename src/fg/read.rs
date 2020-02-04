@@ -4,6 +4,8 @@ use std::str::FromStr;
 use std::fmt;
 use std::num::ParseFloatError;
 
+use super::fourier::{Complex, CoeffsSet};
+
 pub enum ReadingError {
     ParseError(ParseFloatError),
     FileStreamError(std::io::Error, String),
@@ -108,6 +110,45 @@ impl std::convert::From<ParseFloatError> for ReadingError {
     }
 }
 
+impl FromStr for Complex {
+    type Err = ReadingError;
+
+    fn from_str(s: &str) -> Result<Complex, ReadingError> {
+        println!("s: {}", s);
+        let parts: Vec<&str> = s.trim_matches( |c| c == '(' || c == ')' )
+                                .split(',').collect();
+        let parsed_a: f64 = parts[0].trim().parse::<f64>()?;
+        let parsed_b = parts[1].trim().parse::<f64>()?;
+        Ok(Complex {
+            a: parsed_a,
+            b: parsed_b  })
+    }
+}
+
+impl FromStr for CoeffsSet {
+    type Err = ReadingError;
+
+    fn from_str(s: &str) -> Result<CoeffsSet, ReadingError> {
+        let lines: Vec<&str> =  s.split('\n')
+        .filter(|s| !s.is_empty())
+        .collect();
+
+        let mut ppos = Vec::<Complex>::new();
+        let mut nneg = Vec::<Complex>::new();
+        for line in lines {
+            let parts: Vec<&str> =  line.split('&')
+                        .filter(|s| !s.is_empty())
+                        .collect();
+            if parts.len() < 2 {   return Err(ReadingError::IllFormedCoeffs)   }
+            let cp = Complex::from_str(parts[0])?;
+            let cn = Complex::from_str(parts[1])?;
+            ppos.push(cp);
+            nneg.push(cn);    
+        };
+        Ok(CoeffsSet{ppos: ppos, nneg: nneg})
+    }
+}
+
 #[allow(dead_code)]
 pub fn read_file(filename: & str) -> Result<PointsSet, ReadingError> {
     let mut f = match File::open(filename) {
@@ -124,29 +165,8 @@ pub fn read_file(filename: & str) -> Result<PointsSet, ReadingError> {
     Ok(set)
 }
 
-
-struct Complex {
-    a: f64,
-    b: f64,
-}
-
-impl FromStr for Complex {
-    type Err = ReadingError;
-
-    fn from_str(s: &str) -> Result<Complex, ReadingError> {
-        let parts: Vec<&str> = s.trim_matches( |c| c == '(' || c == ')' )
-                                .split(',').collect();
-        let parsed_a: f64 = parts[0].trim().parse::<f64>()?;
-        let parsed_b = parts[1].trim().parse::<f64>()?;
-        Ok(Complex {
-            a: parsed_a,
-            b: parsed_b  })
-    }
-}
-
 #[allow(dead_code)]
-pub fn read_fourier_coeffs (filename: &str) 
-        -> Result<(Vec<[f64; 2]>, Vec<[f64; 2]>), ReadingError> {
+pub fn read_fourier_coeffs (filename: &str) -> Result<CoeffsSet, ReadingError> {
     let mut f = match File::open(filename) {
         Err(e) => return Err(ReadingError::FileStreamError(e, String::from(filename))),
         Ok(f) => f,
@@ -157,22 +177,8 @@ pub fn read_fourier_coeffs (filename: &str)
         return Err(ReadingError::FileStreamError(e, String::from(filename)));
     }
 
-    let lines: Vec<&str> =  data.split('\n')
-                                .filter(|s| !s.is_empty())
-                                .collect();
-
-    let mut ppos = Vec::<[f64; 2]>::new();
-    let mut nneg = Vec::<[f64; 2]>::new();
-    for line in lines {
-        let parts: Vec<&str> = line.split(' ').collect();
-        if parts.len() < 2 {   return Err(ReadingError::IllFormedCoeffs)   }
-        let cp = Complex::from_str(parts[0])?;
-        let cn = Complex::from_str(parts[1])?;
-        ppos.push([cp.a, cp.b]);
-        nneg.push([cn.a, cn.b]);
-        };
-
-    Ok((ppos, nneg))
+    let set = CoeffsSet::from_str(&mut data)?;
+    Ok(set)
 }
 
 

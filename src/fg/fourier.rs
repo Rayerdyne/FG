@@ -1,18 +1,55 @@
 use super::spline::*;
 use std::f64::{self, consts::PI};
 
+#[derive(Debug, Clone, Copy)]
+pub struct Complex {
+    pub a: f64,
+    pub b: f64,
+}
+
+#[derive(Debug)]
+pub struct CoeffsSet {
+    pub ppos: Vec<Complex>,
+    pub nneg: Vec<Complex>,
+    //doubled because vector
+}
+
+impl std::ops::AddAssign for Complex {
+    fn add_assign(&mut self, c: Complex) {
+        self.a += c.a;
+        self.b += c.b;
+    }
+}
+
+impl Complex {
+    fn times_i(&mut self) -> Complex {
+        let temp = self.a;
+        self.a = -self.b;
+        self.b = temp;
+        *self
+    }
+}
+
+impl CoeffsSet {
+    fn new(n: usize) -> CoeffsSet {
+        CoeffsSet {
+            ppos: Vec::with_capacity(n),
+            nneg: Vec::with_capacity(n),
+        }
+    }
+}
+
 #[allow(dead_code)]
-pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> (Vec<[f64; 2]>, Vec<[f64; 2]>) {
+pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     let (t_i, t_f) = (sx.start(), sx.end());
     assert_eq!(t_i, sy.start());
     assert_eq!(t_f, sy.end());
     assert_eq!(sx.num_parts(), sy.num_parts());
-    let period = t_f - t_i;
 
+    let period = t_f - t_i;
     let omega_0 = 2.0_f64*PI / period;
     
-    let mut pp: Vec<[f64; 2]> = vec![[0 as f64, 0 as f64]; n];
-    let mut nn: Vec<[f64; 2]> = vec![[0 as f64, 0 as f64]; n];
+    let mut coeffs = CoeffsSet::new(n);
 
     let changes = sx.changes();
     let part_count = changes.len()-1;
@@ -24,39 +61,37 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> (Vec<[f64; 2]>
         let t2 = changes[i+1];
         vx.next_step(sx.part(i), t2);
         vy.next_step(sy.part(i), t2);
-        add_splines_contributions(&mut pp, &mut nn, &vx, &vy);
+        add_splines_contributions(&mut coeffs, &vx, &vy);
     };
 
-    (pp, nn)
+    coeffs
 }
 
 #[allow(dead_code)]
-fn add_splines_contributions(pp: &mut Vec<[f64; 2]>, nn: &mut Vec<[f64; 2]>, 
-                                  vx: &CubicIntegrator, vy: &CubicIntegrator) {
-    let n = pp.len();
-    assert_eq!(n, nn.len());
+fn add_splines_contributions(coeffs: &mut CoeffsSet, vx: &CubicIntegrator, vy: &CubicIntegrator) {
+    let n = coeffs.ppos.len();
+    assert_eq!(n, coeffs.nneg.len());
 
     for i in 1..n {
         //contribution of X spline
         let p_contr_x = integral_12(vx, i, false);
         let n_contr_x = integral_12(vx, i, true);
 
-        pp[i][0] += p_contr_x[0];         nn[i][0] += n_contr_x[0];
-        pp[i][1] += p_contr_x[1];         nn[i][1] += n_contr_x[1];
+        coeffs.ppos[i] += p_contr_x;         
+        coeffs.nneg[i] += n_contr_x;
 
         //contribution of Y spline
-        let p_contr_y = integral_12(vy, i, false);
-        let n_contr_y = integral_12(vy, i, true);
+        let mut p_contr_y = integral_12(vy, i, false);
+        let mut n_contr_y = integral_12(vy, i, true);
 
-        pp[i][0] += -p_contr_y[1];        nn[i][0] += -n_contr_y[1];
-        pp[i][1] += p_contr_y[0];         nn[i][1] += n_contr_y[0];
-        //    \>   i*(a+ib) = -b+ia
+        coeffs.ppos[i] += p_contr_y.times_i();
+        coeffs.nneg[i] += n_contr_y.times_i();
         }
     // ok this is not optimal.
     // but it will be ok
 }
 
-fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> [f64; 2] {
+fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
     let k: f64 = if negative { (k_index as f64)*(-1.0_f64)}
                  else {k_index as f64};
     let k_sq = k.powf(2.0_f64);
@@ -88,7 +123,10 @@ fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> [f64; 2] 
                     (-cos2 * v.r2_2 / k_cu) +
                     (-sin2 * v.r2_2 / k_fo);
     
-    [term_2_re - term_1_re, term_2_im - term_1_im]
+    Complex {
+        a: term_2_re - term_1_re,
+        b: term_2_im - term_1_im,
+    }
 }
 
 struct CubicIntegrator {

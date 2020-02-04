@@ -104,24 +104,22 @@ pub fn parse() -> Result<(), FgError> {
         0 => false,
         _ => true, };
     println!("shut up warning {}", coeffs_only);// shut up warning
-    
-    fgif::draw_fourier_coeff((vec![[50.0_f64, 0.0_f64], [0.0_f64, 0.0_f64]], 
-                              vec![[25.0_f64, 0.0_f64],  [0.0_f64, 0.0_f64]]),
-                             output, gw, gh, 
-                             &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
-
-    let set = read::read_file(input)?;
 
     if coeffs_only {
         let coeffs = read::read_fourier_coeffs(input)?;
         println!("coeffs: \n{:?}", coeffs);
-    }
 
-    let ss = spline::interpolate_coords(vec![set.xx(), set.yy()], set.tt());
-    let sx = ss[0].clone();
-    let sy = ss[1].clone();
-    println!("sx:\n {}", sx);
-    println!("sy:\n {}", sy);
+        fgif::draw_fourier_coeff(coeffs, output, gw, gh, 
+            &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
+    }
+    else {
+        let set = read::read_file(input)?;
+        let ss = spline::interpolate_coords(vec![set.xx(), set.yy()], set.tt());
+        let sx = ss[0].clone();
+        let sy = ss[1].clone();
+        println!("sx:\n {}", sx);
+        println!("sy:\n {}", sy);    
+    }
     Ok(())
 }
 

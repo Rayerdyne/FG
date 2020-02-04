@@ -6,6 +6,8 @@ use std::io::Error;
 use std::f64::{self, consts::PI};
 use std::borrow::Cow;
 
+use super::fourier::{Complex, CoeffsSet};
+
 #[allow(dead_code)]
 struct MyGif<'a> {
     encoder: Encoder<&'a mut File>,
@@ -126,12 +128,11 @@ fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
 
 /* see https://fr.wikipedia.org/wiki/Algorithme_de_trac%C3%A9_de_segment_de_Bresenham */
 
-pub fn draw_fourier_coeff(coeffs: (Vec<[f64; 2]>, Vec<[f64; 2]>), 
-                          filename: &str, w: usize, h: usize, global_palette: &[u8]) -> Result<(), Error> {
+pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str,
+                 w: usize, h: usize, global_palette: &[u8]) -> Result<(), Error> {
     gotest(20, 20, 200, 200);
-    let (p_coeffs, n_coeffs) = coeffs;
-    let n = p_coeffs.len();
-    assert_eq!(n, n_coeffs.len());
+    let n = coeffs.ppos.len();
+    assert_eq!(n, coeffs.nneg.len());
 
     let mut output = File::create(filename)?;
     let mut gif = MyGif::new(&mut output, w as u16, h as u16, global_palette);
@@ -153,7 +154,7 @@ pub fn draw_fourier_coeff(coeffs: (Vec<[f64; 2]>, Vec<[f64; 2]>),
 
         let mut k_f64: f64 = 1.0_f64;
         for k in 0..n {
-            let coeff = (p_coeffs[k], n_coeffs[k]);
+            let coeff = (coeffs.ppos[k], coeffs.nneg[k]);
             for (c, neg) in vec![(coeff.0, false),
                                  (coeff.1, true) ] {
                 let sin1 = if neg {  -(k_f64*t).sin()  }
@@ -161,8 +162,8 @@ pub fn draw_fourier_coeff(coeffs: (Vec<[f64; 2]>, Vec<[f64; 2]>),
                 let cos1 = (k_f64*t).cos();
                 //   (a+ib)*(cos + i sin)
                 // = a cos - b sin + i (a sin + b cos)
-                x2 = x1 + (c[0]*cos1 - c[1]*sin1);
-                y2 = y1 - (c[0]*sin1 + c[1]*cos1);
+                x2 = x1 + (c.a*cos1 - c.b*sin1);
+                y2 = y1 - (c.a*sin1 + c.b*cos1);
                 // Y axis is multiplied by -1 to make the circle drawed anticlockwise 
                 draw_line(x1 as usize, y1 as usize, x2 as usize, y2 as usize, 1,
                     &mut *tab_lines, w, h);
