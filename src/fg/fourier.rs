@@ -103,25 +103,25 @@ fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
     let cos1 = arg1.cos();       let sin1 = arg1.sin();
     let cos2 = arg2.cos();       let sin2 = arg2.sin();
 
-    let term_1_re = (-sin1 * v.r1_1 / k ) + 
-                    ( cos1 * v.r1_2 / k_sq) +
-                    ( sin1 * v.r1_2 / k_cu) +
-                    (-cos1 * v.r1_2 / k_fo);
+    let term_1_re = (-sin1 * v.r1.m1 / k ) + 
+                    ( cos1 * v.r1.m2 / k_sq) +
+                    ( sin1 * v.r1.m3 / k_cu) +
+                    (-cos1 * v.r1.m4 / k_fo);
                     
-    let term_1_im = ( cos1 * v.r1_1 / k ) + 
-                    ( sin1 * v.r1_2 / k_sq) +
-                    (-cos1 * v.r1_2 / k_cu) +
-                    (-sin1 * v.r1_2 / k_fo);
+    let term_1_im = ( cos1 * v.r1.m1 / k ) + 
+                    ( sin1 * v.r1.m2 / k_sq) +
+                    (-cos1 * v.r1.m3 / k_cu) +
+                    (-sin1 * v.r1.m4 / k_fo);
 
-    let term_2_re = (-sin2 * v.r2_1 / k ) + 
-                    ( cos2 * v.r2_2 / k_sq) +
-                    ( sin2 * v.r2_2 / k_cu) +
-                    (-cos2 * v.r2_2 / k_fo);
+    let term_2_re = (-sin2 * v.r2.m1 / k ) + 
+                    ( cos2 * v.r2.m2 / k_sq) +
+                    ( sin2 * v.r2.m3 / k_cu) +
+                    (-cos2 * v.r2.m4 / k_fo);
 
-    let term_2_im = ( cos2 * v.r2_1 / k ) + 
-                    ( sin2 * v.r2_2 / k_sq) +
-                    (-cos2 * v.r2_2 / k_cu) +
-                    (-sin2 * v.r2_2 / k_fo);
+    let term_2_im = ( cos2 * v.r2.m1 / k ) + 
+                    ( sin2 * v.r2.m2 / k_sq) +
+                    (-cos2 * v.r2.m3 / k_cu) +
+                    (-sin2 * v.r2.m4 / k_fo);
     
     Complex {
         a: term_2_re - term_1_re,
@@ -129,24 +129,56 @@ fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
     }
 }
 
+#[derive(Clone, Copy)]
+struct VarSet {
+    m1: f64,
+    m2: f64,
+    m3: f64,
+    m4: f64,
+}
+
+impl VarSet {
+    fn new_c(t: f64, t_sq: f64, t_cu: f64, abcd: (f64, f64, f64, f64)) -> VarSet {
+        let a = abcd.0;
+        let b = abcd.1;
+        let c = abcd.2;
+        let d = abcd.3;
+        VarSet {
+            m1: a*t_cu +    b*t_sq +     c*t + d,
+            m2:         3.0*a*t_sq + 2.0*b*t + c,
+            m3:                      6.0*a*t + 2.0*b,
+            m4:                                6.0*a
+        }
+    }
+
+    fn new_r(omega: f64, omega_sq: f64, omega_cu: f64, omega_fo: f64, c: VarSet) -> VarSet {
+        VarSet {
+            m1: c.m1 / omega,
+            m2: c.m2 / omega_sq,
+            m3: c.m3 / omega_cu,
+            m4: c.m4 / omega_fo,
+        }
+    }
+
+    fn new0() -> VarSet {
+        VarSet { m1: 0.0_f64, m2: 0.0_f64, m3: 0.0_f64, m4: 0.0_f64}
+    }
+}
+
 struct CubicIntegrator {
-    r1_1: f64,      r2_1: f64,
-    r1_2: f64,      r2_2: f64,
-    r1_3: f64,      r2_3: f64,
-    r1_4: f64,      r2_4: f64,
+    r1: VarSet,
+    r2: VarSet,
 
     t1: f64,        t2: f64,
     t1_sq: f64,     t2_sq: f64,
     t1_cu: f64,     t2_cu: f64,
-    a: f64,         b: f64,         c: f64,      d: f64,
 
     omega_0: f64,   omega_0_sq: f64,    omega_0_cu: f64,    omega_0_fo: f64
 }
 
 impl CubicIntegrator {
     fn next_step(&mut self, sp: SplinePart, t2: f64) {  
-        self.a = sp.geta();           self.b = sp.getb();
-        self.c = sp.getc();           self.d = sp.getd();
+        let abcd = (sp.geta(), sp.getb(), sp.getc(), sp.getd());
 
         self.t1 = self.t2;
         self.t1_sq = self.t2_sq;
@@ -155,36 +187,35 @@ impl CubicIntegrator {
         self.t2_sq = t2.powf(2.0_f64);
         self.t2_cu = t2.powf(3.0_f64);
 
-        let c1_1 = self.a*self.t1_cu +     self.b*self.t1_sq +     self.c*self.t1 + self.d;
-        let c1_2 =                     3.0*self.a*self.t1_sq + 2.0*self.b*self.t1 + self.c;
-        let c1_3 =                                             6.0*self.a*self.t1 + 2.0*self.b;
-        let c1_4 =                                                                  6.0*self.a;
+        let c1 = VarSet::new_c(self.t1, self.t1_sq, self.t1_cu, abcd);
+        let c2 = VarSet::new_c(self.t2, self.t2_sq, self.t2_cu, abcd);
+
+        // let c1_1 = self.a*self.t1_cu +     self.b*self.t1_sq +     self.c*self.t1 + self.d;
+        // let c1_2 =                     3.0*self.a*self.t1_sq + 2.0*self.b*self.t1 + self.c;
+        // let c1_3 =                                             6.0*self.a*self.t1 + 2.0*self.b;
+        // let c1_4 =                                                                  6.0*self.a;
         
-        let c2_1 = self.a*self.t2_cu +     self.b*self.t2_sq +     self.c*self.t2 + self.d;
-        let c2_2 =                     3.0*self.a*self.t2_sq + 2.0*self.b*self.t2 + self.c;
-        let c2_3 =                                             6.0*self.a*self.t2 + 2.0*self.b;
-        let c2_4 =                                                                  6.0*self.a;
+        // let c2_1 = self.a*self.t2_cu +     self.b*self.t2_sq +     self.c*self.t2 + self.d;
+        // let c2_2 =                     3.0*self.a*self.t2_sq + 2.0*self.b*self.t2 + self.c;
+        // let c2_3 =                                             6.0*self.a*self.t2 + 2.0*self.b;
+        // let c2_4 =                                                                  6.0*self.a;
 
-
-        self.r1_1 = c1_1 / self.omega_0;                self.r2_1 = c2_1 / self.omega_0;    
-        self.r1_2 = c1_2 / self.omega_0_sq;             self.r2_2 = c2_2 / self.omega_0_sq;
-        self.r1_3 = c1_3 / self.omega_0_cu;             self.r2_3 = c2_3 / self.omega_0_cu;
-        self.r1_4 = c1_4 / self.omega_0_fo;             self.r2_4 = c2_4 / self.omega_0_fo;  
+        self.r1 = VarSet::new_r(self.omega_0, self.omega_0_sq, self.omega_0_cu, self.omega_0_fo, c1);
+        self.r2 = VarSet::new_r(self.omega_0, self.omega_0_sq, self.omega_0_cu, self.omega_0_fo, c2);
+        // self.r1_1 = c1_1 / self.omega_0;                self.r2_1 = c2_1 / self.omega_0;    
+        // self.r1_2 = c1_2 / self.omega_0_sq;             self.r2_2 = c2_2 / self.omega_0_sq;
+        // self.r1_3 = c1_3 / self.omega_0_cu;             self.r2_3 = c2_3 / self.omega_0_cu;
+        // self.r1_4 = c1_4 / self.omega_0_fo;             self.r2_4 = c2_4 / self.omega_0_fo;  
     }
 
     fn new(t_i: f64, omega_0: f64) -> CubicIntegrator {
         CubicIntegrator {
-            a: 0.0_f64,              b: 0.0_f64,
-            c: 0.0_f64,              d: 0.0_f64,
-
             t1: 0.0_f64,             t2: t_i,
             t1_sq: 0.0_f64,          t2_sq: t_i.powf(2.0_f64),
             t1_cu: 0.0_f64,          t2_cu: t_i.powf(3.0_f64),
 
-            r1_1: 0.0_f64,          r2_1: 0.0_f64,
-            r1_2: 0.0_f64,          r2_2: 0.0_f64,
-            r1_3: 0.0_f64,          r2_3: 0.0_f64,
-            r1_4: 0.0_f64,          r2_4: 0.0_f64,
+            r1: VarSet::new0(),
+            r2: VarSet::new0(),
             omega_0: omega_0,                   omega_0_sq: omega_0.powf(2.0_f64),
             omega_0_cu: omega_0.powf(3.0_f64),  omega_0_fo: omega_0.powf(4.0_f64)  
         }

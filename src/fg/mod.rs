@@ -61,12 +61,12 @@ pub fn parse() -> Result<(), FgError> {
                 .takes_value(true)
                 .help("Sets the name of output file, `output.gif` if not provided"))
             .arg(Arg::with_name("fcolor")
-                .short("fc")
+                .short("f")
                 .long("fcolor")
                 .takes_value(true)
                 .help("Sets the foreground color used in the output (hexcode)"))
             .arg(Arg::with_name("bcolor")
-                .short("bc")
+                .short("b")
                 .long("bcolor")
                 .takes_value(true)
                 .help("Sets the background color used in the output (hexcode)"))
@@ -129,6 +129,7 @@ pub fn test_gif(a: usize, b: usize, c: usize, d: usize) {
 
 fn color_from_hex(s: &str) -> Result <(u8, u8, u8), ParseIntError> {
     let without_prefix = s.trim_start_matches("0x");
+    println!("{}, then {}", s, without_prefix);
     let r = u8::from_str_radix(&without_prefix[0..2], 16)?;
     let g = u8::from_str_radix(&without_prefix[2..4], 16)?;
     let b = u8::from_str_radix(&without_prefix[4..6], 16)?;
