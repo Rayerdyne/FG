@@ -16,10 +16,10 @@ pub struct Spline {
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub struct SplinePart {
-    a: f64,
-    b: f64,
-    c: f64,
-    d: f64,
+    pub a: f64,
+    pub b: f64,
+    pub c: f64,
+    pub d: f64,
 }
 
 fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
@@ -66,21 +66,9 @@ fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
             a[(4*i+3, 4*i+4)] = -6.0_f64*tt[i+1];
             a[(4*i+3, 4*i+5)] = -2.0_f64;
         }
-
-        /*if i > 0 {
-            a[(4*i+2, 4*i-4)] = -3.0_f64*t1_squared;
-            a[(4*i+2, 4*i-3)] = -2.0_f64*tt[i];
-            a[(4*i+2, 4*i-2)] = -1.0_f64;
-        }
-
-        if i < n-2 {
-            a[(4*i+3, 4*i+4)] = -3.0_f64*t2_squared;
-            a[(4*i+3, 4*i+5)] = -2.0_f64*tt[i+1];
-            a[(4*i+3, 4*i+6)] = -1.0_f64;
-        }*/
     }
 
-    /* Starting & ending slopes are 0 */
+    /* Starting & ending slopes are 0 : two missing eqations */
     let ti_squared = tt[0] * tt[0];
     a[(4*n-6, 0)] = ti_squared;
     a[(4*n-6, 1)] = tt[0];
@@ -219,12 +207,4 @@ impl Spline {
     pub fn part(&self, i: usize) -> SplinePart {self.parts[i]}
     pub fn changes(&self) -> Vec<f64> {self.changes.clone()}
     pub fn num_parts(&self) -> usize {self.parts.len()}
-}
-
-#[allow(dead_code)]
-impl SplinePart {
-    pub fn geta(&self) -> f64 {self.a}
-    pub fn getb(&self) -> f64 {self.b}
-    pub fn getc(&self) -> f64 {self.c}
-    pub fn getd(&self) -> f64 {self.d}
 }

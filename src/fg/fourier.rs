@@ -52,12 +52,12 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     let mut coeffs = CoeffsSet::new(n);
 
     let changes = sx.changes();
-    let part_count = changes.len()-1;
+    let num_parts = changes.len()-1;
 
     let mut vx = CubicIntegrator::new(t_i, omega_0);
     let mut vy = CubicIntegrator::new(t_i, omega_0);
 
-    for i in 0..part_count {
+    for i in 0..num_parts {
         let t2 = changes[i+1];
         vx.next_step(sx.part(i), t2);
         vy.next_step(sy.part(i), t2);
@@ -138,16 +138,12 @@ struct VarSet {
 }
 
 impl VarSet {
-    fn new_c(t: f64, t_sq: f64, t_cu: f64, abcd: (f64, f64, f64, f64)) -> VarSet {
-        let a = abcd.0;
-        let b = abcd.1;
-        let c = abcd.2;
-        let d = abcd.3;
+    fn new_c(t: f64, t_sq: f64, t_cu: f64, sp: SplinePart) -> VarSet {
         VarSet {
-            m1: a*t_cu +    b*t_sq +     c*t + d,
-            m2:         3.0*a*t_sq + 2.0*b*t + c,
-            m3:                      6.0*a*t + 2.0*b,
-            m4:                                6.0*a
+            m1: sp.a*t_cu +    sp.b*t_sq +     sp.c*t +     sp.d,
+            m2:            3.0*sp.a*t_sq + 2.0*sp.b*t +     sp.c,
+            m3:                            6.0*sp.a*t + 2.0*sp.b,
+            m4:                                         6.0*sp.a
         }
     }
 
@@ -177,9 +173,7 @@ struct CubicIntegrator {
 }
 
 impl CubicIntegrator {
-    fn next_step(&mut self, sp: SplinePart, t2: f64) {  
-        let abcd = (sp.geta(), sp.getb(), sp.getc(), sp.getd());
-
+    fn next_step(&mut self, sp: SplinePart, t2: f64) {
         self.t1 = self.t2;
         self.t1_sq = self.t2_sq;
         self.t1_cu = self.t2_cu;
@@ -187,10 +181,10 @@ impl CubicIntegrator {
         self.t2_sq = t2.powf(2.0_f64);
         self.t2_cu = t2.powf(3.0_f64);
 
-        let c1 = VarSet::new_c(self.t1, self.t1_sq, self.t1_cu, abcd);
-        let c2 = VarSet::new_c(self.t2, self.t2_sq, self.t2_cu, abcd);
+        let c1 = VarSet::new_c(self.t1, self.t1_sq, self.t1_cu, sp);
+        let c2 = VarSet::new_c(self.t2, self.t2_sq, self.t2_cu, sp);
 
-        // let c1_1 = self.re*self.t1_cu +     self.im*self.t1_sq +     self.c*self.t1 + self.d;
+// let c1_1 = self.re*self.t1_cu +     self.im*self.t1_sq +     self.c*self.t1 + self.d;
         // let c1_2 =                     3.0*self.re*self.t1_sq + 2.0*self.im*self.t1 + self.c;
         // let c1_3 =                                             6.0*self.re*self.t1 + 2.0*self.im;
         // let c1_4 =                                                                  6.0*self.re;
