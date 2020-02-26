@@ -162,8 +162,8 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str,
                 let cos1 = (k_f64*t).cos();
                 //   (a+ib)*(cos + i sin)
                 // = a cos - b sin + i (a sin + b cos)
-                x2 = x1 + (c.a*cos1 - c.b*sin1);
-                y2 = y1 - (c.a*sin1 + c.b*cos1);
+                x2 = x1 + (c.re*cos1 - c.im*sin1);
+                y2 = y1 - (c.re*sin1 + c.im*cos1);
                 // Y axis is multiplied by -1 to make the circle drawed anticlockwise 
                 draw_line(
                     if x1 < 0.0_f64 { 0 } else { x1 as usize },

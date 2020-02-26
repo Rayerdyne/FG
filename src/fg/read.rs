@@ -115,11 +115,11 @@ impl FromStr for Complex {
     fn from_str(s: &str) -> Result<Complex, ReadingError> {
         let parts: Vec<&str> = s.trim_matches( |c| c == '(' || c == ')' )
                                 .split(',').collect();
-        let parsed_a: f64 = parts[0].trim().parse::<f64>()?;
-        let parsed_b = parts[1].trim().parse::<f64>()?;
+        let parsed_re: f64 = parts[0].trim().parse::<f64>()?;
+        let parsed_im = parts[1].trim().parse::<f64>()?;
         Ok(Complex {
-            a: parsed_a,
-            b: parsed_b  })
+            re: parsed_re,
+            im: parsed_im  })
     }
 }
 

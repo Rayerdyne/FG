@@ -3,8 +3,8 @@ use std::f64::{self, consts::PI};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Complex {
-    pub a: f64,
-    pub b: f64,
+    pub re: f64,
+    pub im: f64,
 }
 
 #[derive(Debug)]
@@ -16,16 +16,16 @@ pub struct CoeffsSet {
 
 impl std::ops::AddAssign for Complex {
     fn add_assign(&mut self, c: Complex) {
-        self.a += c.a;
-        self.b += c.b;
+        self.re += c.re;
+        self.im += c.im;
     }
 }
 
 impl Complex {
     fn times_i(&mut self) -> Complex {
-        let temp = self.a;
-        self.a = -self.b;
-        self.b = temp;
+        let temp = self.re;
+        self.re = -self.im;
+        self.im = temp;
         *self
     }
 }
@@ -124,8 +124,8 @@ fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
                     (-sin2 * v.r2.m4 / k_fo);
     
     Complex {
-        a: term_2_re - term_1_re,
-        b: term_2_im - term_1_im,
+        re: term_2_re - term_1_re,
+        im: term_2_im - term_1_im,
     }
 }
 
@@ -190,15 +190,15 @@ impl CubicIntegrator {
         let c1 = VarSet::new_c(self.t1, self.t1_sq, self.t1_cu, abcd);
         let c2 = VarSet::new_c(self.t2, self.t2_sq, self.t2_cu, abcd);
 
-        // let c1_1 = self.a*self.t1_cu +     self.b*self.t1_sq +     self.c*self.t1 + self.d;
-        // let c1_2 =                     3.0*self.a*self.t1_sq + 2.0*self.b*self.t1 + self.c;
-        // let c1_3 =                                             6.0*self.a*self.t1 + 2.0*self.b;
-        // let c1_4 =                                                                  6.0*self.a;
+        // let c1_1 = self.re*self.t1_cu +     self.im*self.t1_sq +     self.c*self.t1 + self.d;
+        // let c1_2 =                     3.0*self.re*self.t1_sq + 2.0*self.im*self.t1 + self.c;
+        // let c1_3 =                                             6.0*self.re*self.t1 + 2.0*self.im;
+        // let c1_4 =                                                                  6.0*self.re;
         
-        // let c2_1 = self.a*self.t2_cu +     self.b*self.t2_sq +     self.c*self.t2 + self.d;
-        // let c2_2 =                     3.0*self.a*self.t2_sq + 2.0*self.b*self.t2 + self.c;
-        // let c2_3 =                                             6.0*self.a*self.t2 + 2.0*self.b;
-        // let c2_4 =                                                                  6.0*self.a;
+        // let c2_1 = self.re*self.t2_cu +     self.im*self.t2_sq +     self.c*self.t2 + self.d;
+        // let c2_2 =                     3.0*self.re*self.t2_sq + 2.0*self.im*self.t2 + self.c;
+        // let c2_3 =                                             6.0*self.re*self.t2 + 2.0*self.im;
+        // let c2_4 =                                                                  6.0*self.re;
 
         self.r1 = VarSet::new_r(self.omega_0, self.omega_0_sq, self.omega_0_cu, self.omega_0_fo, c1);
         self.r2 = VarSet::new_r(self.omega_0, self.omega_0_sq, self.omega_0_cu, self.omega_0_fo, c2);
