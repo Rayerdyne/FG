@@ -116,8 +116,8 @@ pub fn parse() -> Result<(), FgError> {
         let ss = spline::interpolate_coords(vec![set.xx(), set.yy()], set.tt());
         let sx = ss[0].clone();
         let sy = ss[1].clone();
-        println!("sx:\n {}", sx);
-        println!("sy:\n {}", sy);    
+        println!("sx:\n{}", sx);
+        println!("sy:\n{}", sy);    
     }
     Ok(())
 }
@@ -129,7 +129,7 @@ pub fn test_gif(a: usize, b: usize, c: usize, d: usize) {
 
 fn color_from_hex(s: &str) -> Result <(u8, u8, u8), ParseIntError> {
     let without_prefix = s.trim_start_matches("0x");
-    println!("{}, then {}", s, without_prefix);
+    // println!("{}, then {}", s, without_prefix);
     let r = u8::from_str_radix(&without_prefix[0..2], 16)?;
     let g = u8::from_str_radix(&without_prefix[2..4], 16)?;
     let b = u8::from_str_radix(&without_prefix[4..6], 16)?;

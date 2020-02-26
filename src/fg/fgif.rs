@@ -41,17 +41,17 @@ impl MyGif<'_> {
 fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
              tab: &mut [u8], tabw: usize, tabh: usize) {
     
-    let xi2 = if xi > tabw {  tabw  } else {  xi  };
-    let xf2 = if xf > tabw {  tabw  } else {  xf  };
-    let yi2 = if yi > tabh {  tabh  } else {  yi  };
-    let yf2 = if yf > tabh {  tabh  } else {  yf  };
+    let xi2 = if xi >= tabw {  tabw-1  } else {  xi  };
+    let xf2 = if xf >= tabw {  tabw-1  } else {  xf  };
+    let yi2 = if yi >= tabh {  tabh-1  } else {  yi  };
+    let yf2 = if yf >= tabh {  tabh-1  } else {  yf  };
 
-    assert!(xi2 <= tabw && xf2 <= tabw);
-    assert!(yi2 <= tabh && yf2 <= tabh);
+    assert!(xi2 < tabw && xf2 < tabw);
+    assert!(yi2 < tabh && yf2 < tabh);
     let (x1, x2, x_inversed) = if xf2 < xi2 { (xf2, xi2, true)   } 
-                               else {       (xi2, xf2, false)  };
+                               else         { (xi2, xf2, false)  };
     let (y1, y2, y_inversed) = if yf2 < yi2 { (yf2, yi2, true)   }
-                               else       { (yi2, yf2, false)  };
+                               else         { (yi2, yf2, false)  };
     
     if x1 == x2 {
         if y1 == y2 {   tab[y1*tabw + x1] = color; 
@@ -86,13 +86,13 @@ fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
         }
         else { // quadrant 1 
             for x in x1..x2 {
-                tab[(yi+yf-y)*tabw + x] = color;
+                tab[(y1+y2-y)*tabw + x] = color;
 
                 e += ex;
                 while e >= 0 {
                     y += 1;
                     e += ey;
-                    if e >= 0 {   tab[(yi+yf-y)*tabw + x] = color;   }
+                    if e >= 0 {   tab[(y1+y2-y)*tabw + x] = color;   }
                 }
             }
         }
@@ -100,25 +100,25 @@ fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
     else { 
         if !y_inversed { // quadrant 3
             for x in x1..x2 {
-                tab[y*tabw + xi+xf-x] = color;
+                tab[y*tabw + x1+x2-x] = color;
 
                 e += ex;
                 while e >= 0 {
                     y += 1;
                     e += ey;
-                    if e >= 0 {   tab[y*tabw + xi+xf-x] = color;   }
+                    if e >= 0 {   tab[y*tabw + x1+x2-x] = color;   }
                 }
             }
         }
         else { // quadrant 2
             for x in x1..x2 {
-                tab[(yi+yf-y)*tabw + xi+xf-x] = color;
+                tab[(y1+y2-y)*tabw + x1+x2-x] = color;
 
                 e += ex;
                 while e >= 0 {
                     y += 1;
                     e += ey;
-                    if e >= 0 {   tab[(yi+yf-y)*tabw + xi+xf-x] = color;   }
+                    if e >= 0 {   tab[(y1+y2-y)*tabw + x1+x2-x] = color;   }
                 }
             }
         }
@@ -165,15 +165,20 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str,
                 x2 = x1 + (c.a*cos1 - c.b*sin1);
                 y2 = y1 - (c.a*sin1 + c.b*cos1);
                 // Y axis is multiplied by -1 to make the circle drawed anticlockwise 
-                draw_line(x1 as usize, y1 as usize, x2 as usize, y2 as usize, 1,
-                    &mut *tab_lines, w, h);
+                draw_line(
+                    if x1 < 0.0_f64 { 0 } else { x1 as usize },
+                    if y1 < 0.0_f64 { 0 } else { y1 as usize },
+                    if x2 < 0.0_f64 { 0 } else { x2 as usize }, 
+                    if y2 < 0.0_f64 { 0 } else { y2 as usize },
+                    1, &mut *tab_lines, w, h);
                 x1 = x2;
                 y1 = y2;
             }
 
             k_f64 += 1.0_f64;
         }
-        let (xx, yy) = (x2 as usize, y2 as usize);
+        let (xx, yy) = (if x2 < 0.0_f64 { 0 } else { x2 as usize },
+                        if y2 < 0.0_f64 { 0 } else { y2 as usize } );
         draw_line(xx, yy, xx, yy, 1, 
                     &mut *tab_drawing, w, h);
 
