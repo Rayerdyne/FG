@@ -133,8 +133,8 @@ fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
 /** Draws in filename gif the figure represented by
  * the Fourier coefficients in coeffs.
  */
-pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str,
-                 w: usize, h: usize, global_palette: &[u8]) -> Result<(), Error> {
+pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
+    time_interval: f64, global_palette: &[u8]) -> Result<(), Error> {
     gotest(20, 20, 200, 200);
     let n = coeffs.ppos.len();
     assert_eq!(n, coeffs.nneg.len());
@@ -188,7 +188,7 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str,
                     &mut *tab_drawing, w, h);
 
         gif.write_frame(&mut *tab_lines);
-        t += 0.05;
+        t += time_interval;
     };
 
     Ok(())

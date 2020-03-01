@@ -6,7 +6,7 @@ mod read;
 extern crate clap;
 
 use std::fmt;
-use std::num::ParseIntError;
+use std::num::{ParseIntError, ParseFloatError};
 use clap::{Arg, App};
 
 /** Error type returned by `parse()` function,
@@ -16,7 +16,8 @@ use clap::{Arg, App};
  */
 pub enum FgError {
     ReadingError(read::ReadingError),
-    ParseArgError(ParseIntError),
+    ParseArgIntError(ParseIntError),
+    ParseArgFloatError(ParseFloatError),
     IoError(std::io::Error)
 }
 
@@ -25,7 +26,9 @@ impl fmt::Display for FgError {
         match self {
             FgError::ReadingError(e) => 
                 { write!(f, "Read error: {}", e)           }
-            FgError::ParseArgError(e) =>
+            FgError::ParseArgIntError(e) =>
+                { write!(f, "Error parsing the provided arguments: {}", e)}
+            FgError::ParseArgFloatError(e) =>
                 { write!(f, "Error parsing the provided arguments: {}", e)}
             FgError::IoError(e) =>
                 { write!(f, "Error creating the output file: {}", e)}
@@ -36,11 +39,6 @@ impl fmt::Display for FgError {
 impl std::convert::From<read::ReadingError> for FgError {
     fn from(e: read::ReadingError) -> FgError {
         FgError::ReadingError(e)
-    }
-}
-impl std::convert::From<ParseIntError> for FgError {
-    fn from(e: ParseIntError) -> FgError {
-        FgError::ParseArgError(e)
     }
 }
 impl std::convert::From<std::io::Error> for FgError {
@@ -88,6 +86,11 @@ pub fn parse() -> Result<(), FgError> {
                 .long("gifheight")
                 .takes_value(true)
                 .help("Sets the output's height"))
+            .arg(Arg::with_name("time-interval")
+                    .short("dt")
+                    .long("time-interval")
+                    .takes_value(true)
+                    .help("Sets the time between two lines drawing in the output."))
             .arg(Arg::with_name("coeffs")
                 .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as `(c_k re, c_k im)&(c_-k re, c_-k im)`")
                 .long("coeffs")
@@ -104,9 +107,12 @@ pub fn parse() -> Result<(), FgError> {
     let output = matches.value_of("output").unwrap_or("output.gif");
 
     let sgw = matches.value_of("width").unwrap_or("300");
-    let gw = sgw.parse::<usize>()?;
+    let gw = sgw.parse::<usize>().unwrap_or(300);
     let sgh = matches.value_of("height").unwrap_or("200");
-    let gh = sgh.parse::<usize>()?;
+    let gh = sgh.parse::<usize>().unwrap_or(200);
+
+    let stime_interval = matches.value_of("height").unwrap_or("0.05");
+    let time_interval = stime_interval.parse::<f64>().unwrap_or(0.05_f64);
 
     let coeffs_only = match matches.occurrences_of("coeffs"){
         0 => false,
@@ -116,7 +122,7 @@ pub fn parse() -> Result<(), FgError> {
         let coeffs = read::read_fourier_coeffs(input)?;
         println!("coeffs: \n{:?}", coeffs);
 
-        fgif::draw_fourier_coeff(coeffs, output, gw, gh, 
+        fgif::draw_fourier_coeff(coeffs, output, gw, gh, time_interval,
             &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
     }
     else {
