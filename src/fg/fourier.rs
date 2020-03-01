@@ -1,12 +1,14 @@
 use super::spline::*;
 use std::f64::{self, consts::PI};
 
+/** Holds a complex number */
 #[derive(Debug, Clone, Copy)]
 pub struct Complex {
     pub re: f64,
     pub im: f64,
 }
 
+/** Holds a set of Fourier coefficients. */
 #[derive(Debug)]
 pub struct CoeffsSet {
     pub ppos: Vec<Complex>,
@@ -39,6 +41,8 @@ impl CoeffsSet {
     }
 }
 
+/** Integrates a cubic spline and returns a set of 
+ * Fourier coefficients. */
 #[allow(dead_code)]
 pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     let (t_i, t_f) = (sx.start(), sx.end());
@@ -50,7 +54,7 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     let omega_0 = 2.0_f64*PI / period;
     
     let mut coeffs = CoeffsSet::new(n);
-
+    
     let changes = sx.changes();
     let num_parts = changes.len()-1;
 
@@ -67,6 +71,9 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     coeffs
 }
 
+/** As integration is additive, adds to coeffset the contribution
+ * to the integral due to CubicIntegrators vx and vy.
+*/
 #[allow(dead_code)]
 fn add_splines_contributions(coeffs: &mut CoeffsSet, vx: &CubicIntegrator, vy: &CubicIntegrator) {
     let n = coeffs.ppos.len();
@@ -91,6 +98,7 @@ fn add_splines_contributions(coeffs: &mut CoeffsSet, vx: &CubicIntegrator, vy: &
     // but it will be ok
 }
 
+/* Integrates CubicIntegrator. */
 fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
     let k: f64 = if negative { (k_index as f64)*(-1.0_f64)}
                  else {k_index as f64};
@@ -129,6 +137,9 @@ fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
     }
 }
 
+/* Set of 4 variables, meaningless until you make
+ * calculations by youself... 
+ * */
 #[derive(Clone, Copy)]
 struct VarSet {
     m1: f64,
@@ -161,6 +172,9 @@ impl VarSet {
     }
 }
 
+/* Holds variables in order to integrate it. 
+ * Proccessing to manual integration will be very
+ * useful in order to understant this mechanisms. */
 struct CubicIntegrator {
     r1: VarSet,
     r2: VarSet,

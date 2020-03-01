@@ -37,6 +37,8 @@ impl MyGif<'_> {
     }
 }
 
+/* Draws the line (xi, yi) -- (xf, yf) in
+ * array tab. */
 #[allow(dead_code)]
 fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
              tab: &mut [u8], tabw: usize, tabh: usize) {
@@ -128,6 +130,9 @@ fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
 
 /* see https://fr.wikipedia.org/wiki/Algorithme_de_trac%C3%A9_de_segment_de_Bresenham */
 
+/** Draws in filename gif the figure represented by
+ * the Fourier coefficients in coeffs.
+ */
 pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str,
                  w: usize, h: usize, global_palette: &[u8]) -> Result<(), Error> {
     gotest(20, 20, 200, 200);
@@ -189,6 +194,7 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str,
     Ok(())
 }
 
+/** Poor test I wrote to check some function. */
 #[allow(dead_code)]
 pub fn gotest(a: usize, b: usize, c: usize, d: usize) {
     let mut f = File::create("hello.gif").expect("couldn't create file");

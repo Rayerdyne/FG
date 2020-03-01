@@ -9,6 +9,11 @@ use std::fmt;
 use std::num::ParseIntError;
 use clap::{Arg, App};
 
+/** Error type returned by `parse()` function,
+ * represents what's could go wrong.
+ * 
+ * fmt::Display is logically implemented =)
+ */
 pub enum FgError {
     ReadingError(read::ReadingError),
     ParseArgError(ParseIntError),
@@ -44,6 +49,9 @@ impl std::convert::From<std::io::Error> for FgError {
     }
 }
 
+/** Parses arguments provided to the program, and process to execution
+ * RETURN       Result<(), FgError>
+ */
 #[allow(dead_code)]
 pub fn parse() -> Result<(), FgError> {
     
@@ -113,7 +121,7 @@ pub fn parse() -> Result<(), FgError> {
     }
     else {
         let set = read::read_file(input)?;
-        let ss = spline::interpolate_coords(vec![set.xx(), set.yy()], set.tt());
+        let ss = spline::interpolate_coords(vec![set.xx, set.yy], set.tt);
         let sx = ss[0].clone();
         let sy = ss[1].clone();
         println!("sx:\n{}", sx);
@@ -127,6 +135,7 @@ pub fn test_gif(a: usize, b: usize, c: usize, d: usize) {
     fgif::gotest(a, b, c, d);
 }
 
+/* Parses a color written in hexcode (0xrrggbb) to a tuple (r, g, b) */
 fn color_from_hex(s: &str) -> Result <(u8, u8, u8), ParseIntError> {
     let without_prefix = s.trim_start_matches("0x");
     // println!("{}, then {}", s, without_prefix);

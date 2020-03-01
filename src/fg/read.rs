@@ -6,6 +6,10 @@ use std::num::ParseFloatError;
 
 use super::fourier::{Complex, CoeffsSet};
 
+/** Represents error that could happen when reading files
+ * 
+ * fmt::Display is implemented.
+ */
 pub enum ReadingError {
     ParseError(ParseFloatError),
     FileStreamError(std::io::Error, String),
@@ -34,11 +38,18 @@ struct Point {
     t: f64,
 }
 
+/** Holds a set of point to be interpolated
+ * Each point has coordinates x, y and timestamp t. 
+ * 
+ * fromStr is implemented, for formatting:
+ * (x, y, t)
+ * (x, y, t)  ...
+ */
 #[allow(dead_code)]
 pub struct PointsSet {
-    xx: Vec<f64>,
-    yy: Vec<f64>,
-    tt: Vec<f64>,
+    pub xx: Vec<f64>,
+    pub yy: Vec<f64>,
+    pub tt: Vec<f64>,
 }
 
 impl FromStr for Point {
@@ -96,13 +107,6 @@ impl FromStr for PointsSet {
     }
 }
 
-#[allow(dead_code)]
-impl PointsSet {
-    pub fn xx(&self)->Vec<f64> {    self.xx.clone()     }
-    pub fn yy(&self)->Vec<f64> {    self.yy.clone()     }
-    pub fn tt(&self)->Vec<f64> {    self.tt.clone()     }
-}
-
 impl std::convert::From<ParseFloatError> for ReadingError {
     fn from(e: ParseFloatError) -> ReadingError {
         ReadingError::ParseError(e)
@@ -147,6 +151,9 @@ impl FromStr for CoeffsSet {
     }
 }
 
+/** Reads a file and return the set of points it contains. 
+ * RETURN       Result<PointsSet, ReadingError>
+ */
 #[allow(dead_code)]
 pub fn read_file(filename: & str) -> Result<PointsSet, ReadingError> {
     let mut f = match File::open(filename) {
@@ -163,6 +170,9 @@ pub fn read_file(filename: & str) -> Result<PointsSet, ReadingError> {
     Ok(set)
 }
 
+/** Reads Fourier coefficients written in the file named filename. 
+ * RETURN           Result<CoeffsSet, ReadingError>
+*/
 #[allow(dead_code)]
 pub fn read_fourier_coeffs (filename: &str) -> Result<CoeffsSet, ReadingError> {
     let mut f = match File::open(filename) {

@@ -3,6 +3,10 @@ extern crate nalgebra as na;
 use na::{DMatrix, DVector};
 use std::fmt;
 
+/** Represents a cubic spline.
+ * 
+ * Iterator is implemented, and iterates over its parts.
+ */
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Spline {
@@ -13,6 +17,9 @@ pub struct Spline {
     end: f64,
 }
 
+/** Represents a spline part, i.e. a cubic polynomial. 
+ * Thus, it holds its coefficients a, b, c, d
+ */
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub struct SplinePart {
@@ -22,6 +29,10 @@ pub struct SplinePart {
     pub d: f64,
 }
 
+/*  Returns the matrix that will have to be solved when
+ * computing a spline interpolating points whose timestamps
+ * are in tt vector 
+ */
 fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
     let n = tt.len();
     let mut a: DMatrix<f64> = DMatrix::zeros(4*(n-1), 4*(n-1));
@@ -81,6 +92,11 @@ fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
     a
 }
 
+/** Interpolates points (t[i], x[i]) with a cubic
+ * spline and returns it. 
+ * May fail if some timestamps are equal, thus trying to
+ * inverse a matrix which determinant is 0.
+ */
 #[allow(dead_code)]
 pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
     assert_eq!(xx.len(), tt.len());
@@ -118,6 +134,10 @@ pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
     s
 }
 
+/** Iterpolates sets of points (t[i], x[i][j]) (where i is constant),
+ * that share the same timestamps in t. In particular, the coordinates
+ * of points to interpolate for the drawing share the same t.
+ */
 #[allow(dead_code)]
 pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
     let n = tt.len();
@@ -157,6 +177,7 @@ pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
     ss
 }
 
+/** Evaluates the spline at position x. */
 #[allow(dead_code)]
 pub fn eval(spline: Spline, x: f64) -> f64 {
     let mut npart = 0;
@@ -168,6 +189,9 @@ pub fn eval(spline: Spline, x: f64) -> f64 {
     else {eval_part(spline.parts[npart], x)}
 }
 
+/** Compute value of cubic polynomial hold in the splinepart
+ * at position x.
+ */
 #[allow(dead_code)]
 pub fn eval_part(part: SplinePart, x: f64) -> f64 {
     part.a * x * x * x + part.b * x * x + part.c * x + part.d
