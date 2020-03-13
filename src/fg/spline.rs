@@ -143,7 +143,7 @@ pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
     let n = tt.len();
     let count = xxx.len();
     let a = matrix_for(&tt);
-    println!("A = {}", a);
+    // println!("A = {}", a);
     let dec = a.lu();
 
     let mut ss = Vec::new();
@@ -161,10 +161,10 @@ pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
             b[4*j]   = xxx[i][j];
             b[(4*j+1)] = xxx[i][(j+1)];
         };
-        println!("xx: {:?} b: {}", xxx[i], b);
+        // println!("xx: {:?} b: {}", xxx[i], b);
 
         let x = dec.solve(&b).expect("Computation of spline's coefficients failed !");
-        println!("(i={}) sol = {}", i, x);  
+        // println!("(i={}) sol = {}", i, x);  
         for j in 0..(n-1) {
             ss[i].parts.push(SplinePart{
                 a: x[4*j],
