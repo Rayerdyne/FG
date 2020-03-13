@@ -6,7 +6,7 @@ mod read;
 extern crate clap;
 
 use std::fmt;
-use std::num::{ParseIntError, ParseFloatError};
+use std::num::ParseIntError;
 use clap::{Arg, App};
 
 /** Error type returned by `parse()` function,
@@ -14,10 +14,9 @@ use clap::{Arg, App};
  * 
  * fmt::Display is logically implemented =)
  */
+#[allow(dead_code)]
 pub enum FgError {
     ReadingError(read::ReadingError),
-    ParseArgIntError(ParseIntError),
-    ParseArgFloatError(ParseFloatError),
     IoError(std::io::Error)
 }
 
@@ -26,10 +25,6 @@ impl fmt::Display for FgError {
         match self {
             FgError::ReadingError(e) => 
                 { write!(f, "Read error: {}", e)           }
-            FgError::ParseArgIntError(e) =>
-                { write!(f, "Error parsing the provided arguments: {}", e)}
-            FgError::ParseArgFloatError(e) =>
-                { write!(f, "Error parsing the provided arguments: {}", e)}
             FgError::IoError(e) =>
                 { write!(f, "Error creating the output file: {}", e)}
         }
@@ -92,7 +87,8 @@ pub fn parse() -> Result<(), FgError> {
                     .takes_value(true)
                     .help("Sets the time between two lines drawing in the output."))
             .arg(Arg::with_name("coeffs")
-                .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as `(c_k re, c_k im)&(c_-k re, c_-k im)`")
+                .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
+                        `(c_k re,c_k im)&(c_-k re, c_-k im)`")
                 .long("coeffs")
                 .short("c"))
             .get_matches();
@@ -112,7 +108,7 @@ pub fn parse() -> Result<(), FgError> {
     let gh = sgh.parse::<usize>().unwrap_or(200);
 
     let stime_interval = matches.value_of("height").unwrap_or("0.05");
-    let time_interval = stime_interval.parse::<f64>().unwrap_or(0.05_f64);
+    let time_interval = stime_interval.parse::<f64>().unwrap_or(0.05);
 
     let coeffs_only = match matches.occurrences_of("coeffs"){
         0 => false,
@@ -120,7 +116,7 @@ pub fn parse() -> Result<(), FgError> {
 
     if coeffs_only {
         let coeffs = read::read_fourier_coeffs(input)?;
-        println!("coeffs: \n{:?}", coeffs);
+        println!("coeffs: \n{}", coeffs);
 
         fgif::draw_fourier_coeff(coeffs, output, gw, gh, time_interval,
             &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
@@ -131,7 +127,13 @@ pub fn parse() -> Result<(), FgError> {
         let sx = ss[0].clone();
         let sy = ss[1].clone();
         println!("sx:\n{}", sx);
-        println!("sy:\n{}", sy);    
+        println!("sy:\n{}", sy);
+        
+        let coeffs = fourier::compute_fourier_coeff(sx, sy, 5);
+
+        println!("{}", coeffs);
+        fgif::draw_fourier_coeff(coeffs, "hope.gif", gw, gh, time_interval, 
+                &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;  
     }
     Ok(())
 }

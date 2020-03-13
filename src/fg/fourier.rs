@@ -1,5 +1,6 @@
 use super::spline::*;
 use std::f64::{self, consts::PI};
+use std::fmt;
 
 /** Holds a complex number */
 #[derive(Debug, Clone, Copy)]
@@ -53,6 +54,16 @@ impl CoeffsSet {
     }
 }
 
+impl fmt::Display for CoeffsSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        for i in 0..self.ppos.len() {
+            s.push_str(&format!("{}:\t+{:?}\n\t-{:?}\n", i, self.ppos[i], self.nneg[i]));
+        }
+        write!(f, "{}", s)
+    }
+}
+
 /** Integrates a cubic spline path and returns a set of 
  * Fourier coefficients. 
  * The path is described as 
@@ -70,7 +81,6 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     
     let mut coeffs = CoeffsSet::new(n);
     println!("period: {}", period);
-    println!("{:?}", coeffs);
     
     let changes = sx.changes();
     let num_parts = changes.len()-1;

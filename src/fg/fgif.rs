@@ -156,7 +156,8 @@ fn draw_dot(x: usize, y: usize, color: u8,
  */
 pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
     time_interval: f64, global_palette: &[u8]) -> Result<(), Error> {
-    gotest(20, 20, 200, 200);
+
+    // gotest(20, 20, 200, 200);
     let n = coeffs.ppos.len();
     assert_eq!(n, coeffs.nneg.len());
 
@@ -167,21 +168,17 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
     let mut tab_drawing: Box<[u8]> = vect.into_boxed_slice();
     println!("w: {}, h: {}, {}", w as u16, h as u16, (w*h) as usize);
     
-    let mut t: f64 = 0.0_f64;
+    let mut t: f64 = 0.0;
     let max = 2.0_f64*PI;
     while t < max {
         // keep what's already drawed
         let mut tab_lines = tab_drawing.clone();
         
-        let mut x1: f64 = (w as f64) / 2.0_f64;
-        let mut y1: f64 = (h as f64) / 2.0_f64;
-        let mut x2: f64 = 0.0_f64;
-        let mut y2: f64 = 0.0_f64;
+        let mut x1: f64 = (w as f64) / 2.0;
+        let mut y1: f64 = (h as f64) / 2.0;
 
         let mut x1_usize: usize = w / 2;
         let mut y1_usize: usize = h / 2;
-        let mut x2_usize: usize = 0;
-        let mut y2_usize: usize = 0;
 
         let mut k_f64: f64 = 1.0_f64;
         for k in 0..n {
@@ -194,22 +191,23 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
                 let cos1 = (k_f64*t).cos();
                 //   (a+ib)*(cos + i sin)
                 // = a cos - b sin + i (a sin + b cos)
-                x2 = x1 + (c.re*cos1 - c.im*sin1);
-                y2 = y1 - (c.re*sin1 + c.im*cos1);
+                let x2 = x1 + (c.re*cos1 - c.im*sin1);
+                let y2 = y1 - (c.re*sin1 + c.im*cos1);
                 // Y axis is multiplied by -1 to make the circle drawed anticlockwise 
+
                 let (x2_usize, y2_usize) = limit_real(x2, y2, w, h);
                 draw_line(x1_usize, y1_usize, x2_usize, y2_usize,
                     1, &mut *tab_lines, w, h);
+                
                 x1 = x2;
                 y1 = y2;
                 x1_usize = x2_usize;
                 y1_usize = y2_usize;
             }
 
-            k_f64 += 1.0_f64;
+            k_f64 += 1.0;
         }
-        let (xx, yy) = (if x2 < 0.0_f64 { 0 } else { x2 as usize },
-                        if y2 < 0.0_f64 { 0 } else { y2 as usize } );
+        let (xx, yy) = limit_real(x1, y1, w, h);
         draw_dot(xx, yy, 1, &mut *tab_drawing, w, h);
 
         gif.write_frame(&mut *tab_lines);
