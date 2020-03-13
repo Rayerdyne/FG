@@ -37,16 +37,30 @@ impl MyGif<'_> {
     }
 }
 
+/* Returns (x, y) such as they are limited by tabw and tabh
+ */
+fn limit(x: usize, y: usize, tabw: usize, tabh: usize) 
+    -> (usize, usize) {
+    let x2 = if x >= tabw {  tabw-1  } else {  x  };
+    let y2 = if y >= tabh {  tabh-1  } else {  y  };
+
+    (x2, y2)
+}
+
+fn limit_real(x: f64, y: f64, tabw: usize, tabh: usize) -> (usize, usize) {
+    let x2 = if x < 0.0_f64 { 0 } else { x as usize };
+    let y2 = if y < 0.0_f64 { 0 } else { y as usize };
+    return limit(x2, y2, tabw, tabh);
+}
+
 /* Draws the line (xi, yi) -- (xf, yf) in
  * array tab. */
 #[allow(dead_code)]
 fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
              tab: &mut [u8], tabw: usize, tabh: usize) {
     
-    let xi2 = if xi >= tabw {  tabw-1  } else {  xi  };
-    let xf2 = if xf >= tabw {  tabw-1  } else {  xf  };
-    let yi2 = if yi >= tabh {  tabh-1  } else {  yi  };
-    let yf2 = if yf >= tabh {  tabh-1  } else {  yf  };
+    let (xi2, yi2) = limit(xi, yi, tabw, tabh);
+    let (xf2, yf2) = limit(xf, yf, tabw, tabh);
 
     assert!(xi2 < tabw && xf2 < tabw);
     assert!(yi2 < tabh && yf2 < tabh);
@@ -128,6 +142,13 @@ fn draw_line(xi: usize, yi: usize, xf: usize, yf: usize, color: u8,
 
 }
 
+fn draw_dot(x: usize, y: usize, color: u8,
+    tab: &mut [u8], tabw: usize, tabh: usize) {
+
+    let (x2, y2) = limit(x, y, tabw, tabh);
+    tab[y2*tabw + x2] = color;
+}
+
 /* see https://fr.wikipedia.org/wiki/Algorithme_de_trac%C3%A9_de_segment_de_Bresenham */
 
 /** Draws in filename gif the figure represented by
@@ -157,11 +178,17 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
         let mut x2: f64 = 0.0_f64;
         let mut y2: f64 = 0.0_f64;
 
+        let mut x1_usize: usize = w / 2;
+        let mut y1_usize: usize = h / 2;
+        let mut x2_usize: usize = 0;
+        let mut y2_usize: usize = 0;
+
         let mut k_f64: f64 = 1.0_f64;
         for k in 0..n {
             let coeff_pn = (coeffs.ppos[k], coeffs.nneg[k]);
             for (c, neg) in vec![(coeff_pn.0, false),
                                  (coeff_pn.1, true) ] {
+                
                 let sin1 = if neg {  -(k_f64*t).sin()  }
                            else   {   (k_f64*t).sin()  };
                 let cos1 = (k_f64*t).cos();
@@ -170,22 +197,20 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
                 x2 = x1 + (c.re*cos1 - c.im*sin1);
                 y2 = y1 - (c.re*sin1 + c.im*cos1);
                 // Y axis is multiplied by -1 to make the circle drawed anticlockwise 
-                draw_line(
-                    if x1 < 0.0_f64 { 0 } else { x1 as usize },
-                    if y1 < 0.0_f64 { 0 } else { y1 as usize },
-                    if x2 < 0.0_f64 { 0 } else { x2 as usize }, 
-                    if y2 < 0.0_f64 { 0 } else { y2 as usize },
+                let (x2_usize, y2_usize) = limit_real(x2, y2, w, h);
+                draw_line(x1_usize, y1_usize, x2_usize, y2_usize,
                     1, &mut *tab_lines, w, h);
                 x1 = x2;
                 y1 = y2;
+                x1_usize = x2_usize;
+                y1_usize = y2_usize;
             }
 
             k_f64 += 1.0_f64;
         }
         let (xx, yy) = (if x2 < 0.0_f64 { 0 } else { x2 as usize },
                         if y2 < 0.0_f64 { 0 } else { y2 as usize } );
-        draw_line(xx, yy, xx, yy, 1, 
-                    &mut *tab_drawing, w, h);
+        draw_dot(xx, yy, 1, &mut *tab_drawing, w, h);
 
         gif.write_frame(&mut *tab_lines);
         t += time_interval;
