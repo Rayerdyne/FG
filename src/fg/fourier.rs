@@ -22,6 +22,12 @@ impl std::ops::AddAssign for Complex {
         self.im += c.im;
     }
 }
+impl std::ops::DivAssign<f64> for Complex {
+    fn div_assign(&mut self, div: f64) {
+        self.re /= div;
+        self.im /= div;
+    }
+}
 
 impl Complex {
     fn times_i(&mut self) -> Complex {
@@ -30,19 +36,28 @@ impl Complex {
         self.im = temp;
         *self
     }
+    fn zero() -> Complex {
+        Complex {
+            re: 0.0,
+            im: 0.0,
+        }
+    }
 }
 
 impl CoeffsSet {
     fn new(n: usize) -> CoeffsSet {
         CoeffsSet {
-            ppos: Vec::with_capacity(n),
-            nneg: Vec::with_capacity(n),
+            ppos: vec![Complex::zero(); n],
+            nneg: vec![Complex::zero(); n],
         }
     }
 }
 
-/** Integrates a cubic spline and returns a set of 
- * Fourier coefficients. */
+/** Integrates a cubic spline path and returns a set of 
+ * Fourier coefficients. 
+ * The path is described as 
+ * (x(t), y(t)) = (sx(t), sy(t)), so that we integrate
+ * sx(t) + i * sy(t) */
 #[allow(dead_code)]
 pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     let (t_i, t_f) = (sx.start(), sx.end());
@@ -51,9 +66,11 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     assert_eq!(sx.num_parts(), sy.num_parts());
 
     let period = t_f - t_i;
-    let omega_0 = 2.0_f64*PI / period;
+    let omega_0 = 2.0*PI / period;
     
     let mut coeffs = CoeffsSet::new(n);
+    println!("period: {}", period);
+    println!("{:?}", coeffs);
     
     let changes = sx.changes();
     let num_parts = changes.len()-1;
@@ -68,11 +85,18 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
         add_splines_contributions(&mut coeffs, &vx, &vy);
     };
 
+
+    for i in 0..coeffs.nneg.len() {
+        coeffs.ppos[i] /= period;
+        coeffs.nneg[i] /= period;
+    }
+
     coeffs
 }
 
 /** As integration is additive, adds to coeffset the contribution
- * to the integral due to CubicIntegrators vx and vy.
+ * to the integral due to CubicIntegrators vx (along x axis) and 
+ * vy (along y axis).
 */
 #[allow(dead_code)]
 fn add_splines_contributions(coeffs: &mut CoeffsSet, vx: &CubicIntegrator, vy: &CubicIntegrator) {
@@ -100,11 +124,11 @@ fn add_splines_contributions(coeffs: &mut CoeffsSet, vx: &CubicIntegrator, vy: &
 
 /* Integrates CubicIntegrator. */
 fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
-    let k: f64 = if negative { (k_index as f64)*(-1.0_f64)}
+    let k: f64 = if negative { (k_index as f64)*(-1.0)}
                  else {k_index as f64};
-    let k_sq = k.powf(2.0_f64);
-    let k_cu = k.powf(3.0_f64);
-    let k_fo = k.powf(4.0_f64);
+    let k_sq = k.powf(2.0);
+    let k_cu = k.powf(3.0);
+    let k_fo = k.powf(4.0);
     let arg1 = -v.omega_0*k*v.t1;
     let arg2 = -v.omega_0*k*v.t2;
 
@@ -168,13 +192,13 @@ impl VarSet {
     }
 
     fn new0() -> VarSet {
-        VarSet { m1: 0.0_f64, m2: 0.0_f64, m3: 0.0_f64, m4: 0.0_f64}
+        VarSet { m1: 0.0, m2: 0.0, m3: 0.0, m4: 0.0}
     }
 }
 
-/* Holds variables in order to integrate it. 
+/** Holds variables in order to integrate a part of a spline. 
  * Proccessing to manual integration will be very
- * useful in order to understant this mechanisms. */
+ * useful in order to understant these mechanisms. */
 struct CubicIntegrator {
     r1: VarSet,
     r2: VarSet,
@@ -192,8 +216,8 @@ impl CubicIntegrator {
         self.t1_sq = self.t2_sq;
         self.t1_cu = self.t2_cu;
         self.t2 = t2;
-        self.t2_sq = t2.powf(2.0_f64);
-        self.t2_cu = t2.powf(3.0_f64);
+        self.t2_sq = t2.powf(2.0);
+        self.t2_cu = t2.powf(3.0);
 
         let c1 = VarSet::new_c(self.t1, self.t1_sq, self.t1_cu, sp);
         let c2 = VarSet::new_c(self.t2, self.t2_sq, self.t2_cu, sp);
@@ -218,14 +242,14 @@ impl CubicIntegrator {
 
     fn new(t_i: f64, omega_0: f64) -> CubicIntegrator {
         CubicIntegrator {
-            t1: 0.0_f64,             t2: t_i,
-            t1_sq: 0.0_f64,          t2_sq: t_i.powf(2.0_f64),
-            t1_cu: 0.0_f64,          t2_cu: t_i.powf(3.0_f64),
+            t1: 0.0,             t2: t_i,
+            t1_sq: 0.0,          t2_sq: t_i.powf(2.0),
+            t1_cu: 0.0,          t2_cu: t_i.powf(3.0),
 
             r1: VarSet::new0(),
             r2: VarSet::new0(),
-            omega_0: omega_0,                   omega_0_sq: omega_0.powf(2.0_f64),
-            omega_0_cu: omega_0.powf(3.0_f64),  omega_0_fo: omega_0.powf(4.0_f64)  
+            omega_0: omega_0,                   omega_0_sq: omega_0.powf(2.0),
+            omega_0_cu: omega_0.powf(3.0),      omega_0_fo: omega_0.powf(4.0)  
         }
     }
 }
