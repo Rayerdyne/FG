@@ -65,14 +65,15 @@ fn compute_one(k: i32, sx: & Spline, sy: & Spline, constants:&  Constants)
 
 /**
  * Computes the contribution of the p-th part of the spline to the fourier
- * coefficient (of function s(t)) value.
+ * coefficient (of function s(t)) value, between t_i and t_f.
  */
 fn part_contribution(s: & Spline, p: usize, r: & FourTerms,
     t_i: & ThreeTerms, t_f: & ThreeTerms) -> Complex {
 
     let part = s.part(p);
     
-    primitive(part, & t_i, & r) - primitive(part, & t_f, & r)
+    primitive(part, & t_i, & r) * Complex::expj(-t_i.na / r.na) -  
+    primitive(part, & t_f, & r) * Complex::expj(-t_f.na / r.na)
 }
 
 fn primitive(sp: SplinePart, t: & ThreeTerms, r: & FourTerms) -> Complex {
@@ -138,8 +139,9 @@ struct ThreeTerms {
     cu: f64, // cubed
 }
 
+#[allow(dead_code)]
 impl ThreeTerms {
-    fn new (na: f64, sq: f64, cu: f64, fo: f64) -> Self {
+    fn new (na: f64, sq: f64, cu: f64) -> Self {
         Self {  na: na,     sq: sq,
                 cu: cu,          }
     }
