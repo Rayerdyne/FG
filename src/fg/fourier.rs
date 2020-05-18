@@ -14,7 +14,7 @@ pub struct Complex {
 pub struct CoeffsSet {
     pub ppos: Vec<Complex>,
     pub nneg: Vec<Complex>,
-    //doubled because vector
+    //doubled character because vector
 }
 
 impl std::ops::AddAssign for Complex {
@@ -77,10 +77,10 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     assert_eq!(sx.num_parts(), sy.num_parts());
 
     let period = t_f - t_i;
-    let omega_0 = 2.0*PI / period;
+    let omega_0 = 2.0 * PI / period;
+    println!("period: {}", period);
     
     let mut coeffs = CoeffsSet::new(n);
-    println!("period: {}", period);
     
     let changes = sx.changes();
     let num_parts = changes.len()-1;
@@ -165,6 +165,8 @@ fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
                     (-cos2 * v.r2.m3 / k_cu) +
                     (-sin2 * v.r2.m4 / k_fo);
     
+    // println!("(t1, t2) = ({}, {}) k = {} \t| {} + {}*i", v.t1, v.t2, k_index, term_1_re, term_1_im);
+    // println!("\t\t\t\t| {} + {}*i", term_2_re, term_2_im);
     Complex {
         re: term_2_re - term_1_re,
         im: term_2_im - term_1_im,

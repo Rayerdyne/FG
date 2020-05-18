@@ -193,8 +193,8 @@ pub fn eval(spline: Spline, x: f64) -> f64 {
  * at position x.
  */
 #[allow(dead_code)]
-pub fn eval_part(part: SplinePart, x: f64) -> f64 {
-    part.a * x * x * x + part.b * x * x + part.c * x + part.d
+fn eval_part(part: SplinePart, x: f64) -> f64 {
+    part.a * x.powi(3) + part.b * x.powi(2) + part.c * x + part.d
 }
 
 impl Iterator for Spline {
