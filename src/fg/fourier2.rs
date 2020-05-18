@@ -43,34 +43,48 @@ pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
 fn compute_one(k: i32, sx: & Spline, sy: & Spline, constants:&  Constants) 
     -> Complex {
     
+    let r = FourTerms::new( constants.omega_0_inv.na / k as f64,
+        constants.omega_0_inv.sq / k.pow(2) as f64,
+        constants.omega_0_inv.cu / k.pow(3) as f64,
+        constants.omega_0_inv.fo / k.pow(4) as f64 );
+    
     let mut x_k = Complex::zero();
     let mut y_k = Complex::zero();
 
+    let mut t_i: ThreeTerms;
+    let mut t_f: ThreeTerms = ThreeTerms::new_pwr(sx.start());
     for p in 0..sx.num_parts() {
-        x_k += part_contribution(k, sx, p, & constants);
-        y_k += part_contribution(k, sy, p, & constants);
+        t_i = t_f;
+        t_f = ThreeTerms::new_pwr(sx.changes()[p+1]);
+        x_k += part_contribution(sx, p, & r, & t_i, & t_f);
+        y_k += part_contribution(sy, p, & r, & t_i, & t_f);
     }
 
-    let f_k = x_k + y_k.times_j();
-    f_k
+    x_k + y_k.times_j()
 }
 
 /**
  * Computes the contribution of the p-th part of the spline to the fourier
  * coefficient (of function s(t)) value.
  */
-fn part_contribution(k: i32, s: & Spline, p: usize, constants: & Constants) 
-    -> Complex {
-    let part = s.part(p);
-    let t_i = constants.changes[p];
-    let t_f = constants.changes[p+1];
+fn part_contribution(s: & Spline, p: usize, r: & FourTerms,
+    t_i: & ThreeTerms, t_f: & ThreeTerms) -> Complex {
 
-    let r = FourTerms::new(  constants.omega_0_inv.na / k as f64,
-                            constants.omega_0_inv.sq / k.pow(2) as f64,
-                            constants.omega_0_inv.cu / k.pow(3) as f64,
-                            constants.omega_0_inv.fo / k.pow(4) as f64 );
+    let part = s.part(p);
     
-    
+    primitive(part, & t_i, & r) - primitive(part, & t_f, & r)
+}
+
+fn primitive(sp: SplinePart, t: & ThreeTerms, r: & FourTerms) -> Complex {
+    let term_1 = r.na * (sp.a * t.cu + sp.b * t.sq + sp.c * t.na + sp.d);
+    let term_2 = r.sq * (3.0 * sp.a * t.sq + 2.0 * sp.b * t.na + sp.c);
+    let term_3 = r.cu * (6.0 * sp.a * t.na + 2.0 * sp.b);
+    let term_4 = r.fo * (6.0 * sp.a);
+
+    Complex {
+        re: term_2 - term_4,
+        im: term_1 - term_3
+    }    
 }
 
 /** Holds a set of Fourier coefficients. */
