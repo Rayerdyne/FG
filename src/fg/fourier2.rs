@@ -1,4 +1,5 @@
 use super::spline::*;
+use super::complex::*;
 use std::f64::{self, consts::PI};
 use std::fmt;
 
@@ -17,15 +18,19 @@ pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     assert_eq!(t_f, sy.end());
     assert_eq!(sx.num_parts(), sy.num_parts());
 
-    let T = t_f - t_i;
-    let omega_0_na = 2.0 * PI / T;
-    let omega_0_inv = QuadTerm::new_pwr(1 / omega_0_na);
+    // aside: T makes rustc complain
+    let period = t_f - t_i; 
+    let omega_0_na = 2.0 * PI / period;
+    let constants = Constants {
+        omega_0_inv: FourTerms::new_pwr(1.0 / omega_0_na),
+        changes: sx.changes()
+    };
 
     let mut coeffs = CoeffsSet::new(n);
 
     for k in 0..n {
-        coeffs.ppos[k] = compute_one( k, sx, sy, omega_0_inv);
-        coeffs.nneg[k] = compute_one(-k, sx, sy, omega_0_inv);
+        coeffs.ppos[k] = compute_one( k as i32,   & sx, & sy, & constants);
+        coeffs.nneg[k] = compute_one(-(k as i32), & sx, & sy, & constants);
     }
 
     coeffs
@@ -35,38 +40,37 @@ pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
  * Computes the k-th fourier coefficient of sx(t) + j * sy(t). 
  * Achieves the sum over all the spline parts. 
  */
-fn compute_one(k: usize, sx: Spline, sy: Spline, omega_0_inv: QuadTerm) -> Complex {
+fn compute_one(k: i32, sx: & Spline, sy: & Spline, constants:&  Constants) 
+    -> Complex {
+    
+    let mut x_k = Complex::zero();
+    let mut y_k = Complex::zero();
 
-
-}
-
-/** Holds a complex number */
-#[derive(Debug, Clone, Copy)]
-pub struct Complex {
-    pub re: f64,
-    pub im: f64,
-}
-
-impl std::ops::AddAssign for Complex {
-    fn add_assign(&mut self, c: Complex) {  self.re += c.re;
-                                            self.im += c.im;    }
-}
-impl std::ops::DivAssign<f64> for Complex {
-    fn div_assign(&mut self, div: f64) {    self.re /= div;
-                                            self.im /= div;     }
-}
-
-impl Complex {
-    fn times_i(&mut self) -> Complex {
-        let temp = self.re;
-        self.re = -self.im;
-        self.im = temp;
-        *self
+    for p in 0..sx.num_parts() {
+        x_k += part_contribution(k, sx, p, & constants);
+        y_k += part_contribution(k, sy, p, & constants);
     }
-    fn zero() -> Complex {
-        Complex {   re: 0.0,
-                    im: 0.0     }
-    }
+
+    let f_k = x_k + y_k.times_j();
+    f_k
+}
+
+/**
+ * Computes the contribution of the p-th part of the spline to the fourier
+ * coefficient (of function s(t)) value.
+ */
+fn part_contribution(k: i32, s: & Spline, p: usize, constants: & Constants) 
+    -> Complex {
+    let part = s.part(p);
+    let t_i = constants.changes[p];
+    let t_f = constants.changes[p+1];
+
+    let r = FourTerms::new(  constants.omega_0_inv.na / k as f64,
+                            constants.omega_0_inv.sq / k.pow(2) as f64,
+                            constants.omega_0_inv.cu / k.pow(3) as f64,
+                            constants.omega_0_inv.fo / k.pow(4) as f64 );
+    
+    
 }
 
 /** Holds a set of Fourier coefficients. */
@@ -96,26 +100,46 @@ impl fmt::Display for CoeffsSet {
 
 /** Holds 4 terms, which are powers of the na member */
 #[derive(Debug)]
-struct QuadTerm {
+struct FourTerms {
     na: f64, // natural
     sq: f64, // squared
     cu: f64, // cubed
     fo: f64  // to the forth
 }
 
-impl QuadTerm {
-    fn new (na: f64, sq: f64, cu: f64, fo: f64) {
-        QuadTerm {  na: na,     sq: sq,
-                    cu: cu,     fo: fo      }
+impl FourTerms {
+    fn new (na: f64, sq: f64, cu: f64, fo: f64) -> Self {
+        Self {  na: na,     sq: sq,
+                cu: cu,     fo: fo                  }
     }
-    fn new_pwr (na: f64) {
-        QuadTerm {  na: na,         sq: na.powi(2),
-                    cu: na.powi(3), fo: na.powi(4)    }
+    fn new_pwr (na: f64) -> Self {
+        Self {  na: na,            sq: na.powi(2),
+                cu: na.powi(3),    fo: na.powi(4)   }
     }
 }
 
+struct ThreeTerms {
+    na: f64, // natural
+    sq: f64, // squared
+    cu: f64, // cubed
+}
+
+impl ThreeTerms {
+    fn new (na: f64, sq: f64, cu: f64, fo: f64) -> Self {
+        Self {  na: na,     sq: sq,
+                cu: cu,          }
+    }
+    fn new_pwr (na: f64) -> Self {
+        Self {  na: na,         sq: na.powi(2),
+                cu: na.powi(3)   }
+    }
+}
+
+/**
+ * Holds values that will remain constant to avoid unuseful recomputation.
+ */
 #[derive(Debug)]
 struct Constants {
-    omega_0_inv: QuadTerm,
-
+    omega_0_inv: FourTerms,
+    changes: Vec<f64>
 }

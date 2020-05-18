@@ -29,7 +29,7 @@ pub struct SplinePart {
     pub d: f64,
 }
 
-/*  Returns the matrix that will have to be solved when
+/** Returns the matrix that will have to be solved when
  * computing a spline interpolating points whose timestamps
  * are in tt vector 
  */

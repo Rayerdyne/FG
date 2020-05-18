@@ -1,4 +1,6 @@
+mod complex;
 mod fourier;
+mod fourier2;
 mod fgif;
 mod spline;
 mod read;
