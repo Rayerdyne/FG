@@ -43,6 +43,9 @@ impl std::convert::From<std::io::Error> for FgError {
     }
 }
 
+const STD: u8 = 1;
+const COEFFS_ONLY: u8 = 2;
+const SPLINE: u8 = 3;
 /// Parses arguments provided to the program, and process to execution
 #[allow(dead_code)]
 pub fn parse() -> Result<(), FgError> {
@@ -85,11 +88,19 @@ pub fn parse() -> Result<(), FgError> {
                     .long("time-interval")
                     .takes_value(true)
                     .help("Sets the time between two lines drawing in the output."))
-            .arg(Arg::with_name("coeffs")
-                .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
-                        `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))`")
-                .long("coeffs")
-                .short("c"))
+            // .arg(Arg::with_name("coeffs")
+            //     .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
+            //             `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))`")
+            //     .long("coeffs")
+            //     .short("c"))
+            .arg(Arg::with_name("type")
+                .takes_value(true)
+                .possible_values(&["coeffs", "spline"])
+                .help("Coeffs: uputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
+                        `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))` \n
+                        Spline: only draws the spline.")
+                .long("type")
+                .short("t"))
             .arg(Arg::with_name("method")
                 .short("2")
                 .long("method2")
@@ -114,19 +125,36 @@ pub fn parse() -> Result<(), FgError> {
     let stime_interval = matches.value_of("height").unwrap_or("0.05");
     let time_interval = stime_interval.parse::<f64>().unwrap_or(0.05);
 
-    let coeffs_only = match matches.occurrences_of("coeffs"){
-        0 => false,
-        _ => true, };
+    let ctype = match matches.value_of("type").unwrap_or("std") {
+        "std" => STD,
+        "coeffs" => COEFFS_ONLY,
+        "spline" => SPLINE,
+        _ => STD,
+    };
+    println!("ctype = {}", ctype);
+
+    // let coeffs_only = match matches.occurrences_of("coeffs"){
+    //     0 => false,
+    //     _ => true, };
     
     let method2 = match matches.occurrences_of("method") {
         0 => false,
         _ => true, };
 
-    if coeffs_only {
+    if ctype == COEFFS_ONLY {
         let coeffs = read::read_fourier_coeffs(input)?;
         println!("coeffs: \n{}", coeffs);
 
         fgif::draw_fourier_coeff(coeffs, output, gw, gh, time_interval,
+            &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
+    }
+    else if ctype == SPLINE {
+        let set = read::read_file(input)?;
+        let ss = spline::interpolate_coords(vec![set.xx, set.yy], set.tt);
+        let sx = ss[0].clone();
+        let sy = ss[1].clone();
+
+        fgif::draw_spline(sx, sy, output, gw, gh, time_interval, 1000, 
             &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
     }
     else {
