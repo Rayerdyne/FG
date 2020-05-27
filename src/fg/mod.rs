@@ -10,6 +10,7 @@ extern crate clap;
 use std::fmt;
 use std::num::ParseIntError;
 use clap::{Arg, App};
+use std::f64::consts::PI;
 
 /// Error type returned by `parse()` function,
 /// represents what's could go wrong.
@@ -46,6 +47,10 @@ impl std::convert::From<std::io::Error> for FgError {
 const STD: u8 = 1;
 const COEFFS_ONLY: u8 = 2;
 const SPLINE: u8 = 3;
+
+const DEF_HEIGHT: usize = 300;
+const DEF_WIDTH: usize = 300;
+const DEF_N_STEPS: usize = 200;
 /// Parses arguments provided to the program, and process to execution
 #[allow(dead_code)]
 pub fn parse() -> Result<(), FgError> {
@@ -83,11 +88,11 @@ pub fn parse() -> Result<(), FgError> {
                 .long("gifheight")
                 .takes_value(true)
                 .help("Sets the output's height"))
-            .arg(Arg::with_name("time-interval")
-                    .short("dt")
-                    .long("time-interval")
+            .arg(Arg::with_name("n_steps")
+                    .short("n")
+                    .long("n-steps")
                     .takes_value(true)
-                    .help("Sets the time between two lines drawing in the output."))
+                    .help("Sets the numbers of frames of the output."))
             // .arg(Arg::with_name("coeffs")
             //     .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
             //             `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))`")
@@ -117,13 +122,15 @@ pub fn parse() -> Result<(), FgError> {
     let input = matches.value_of("input").unwrap();
     let output = matches.value_of("output").unwrap_or("output.gif");
 
-    let sgw = matches.value_of("width").unwrap_or("300");
-    let gw = sgw.parse::<usize>().unwrap_or(300);
-    let sgh = matches.value_of("height").unwrap_or("200");
-    let gh = sgh.parse::<usize>().unwrap_or(200);
-
-    let stime_interval = matches.value_of("height").unwrap_or("0.05");
-    let time_interval = stime_interval.parse::<f64>().unwrap_or(0.05);
+    let def_width_str = DEF_WIDTH.to_string();
+    let def_height_str = DEF_WIDTH.to_string();
+    let def_n_steps_str = DEF_N_STEPS.to_string();
+    let sgw = matches.value_of("width").unwrap_or(& def_width_str);
+    let gw = sgw.parse::<usize>().unwrap_or(DEF_WIDTH);
+    let sgh = matches.value_of("height").unwrap_or(& def_height_str);
+    let gh = sgh.parse::<usize>().unwrap_or(DEF_HEIGHT);
+    let sn_steps = matches.value_of("n_steps").unwrap_or(& def_n_steps_str);
+    let n_steps = sn_steps.parse::<usize>().unwrap_or(DEF_N_STEPS);
 
     let ctype = match matches.value_of("test").unwrap_or("std") {
         "std" => STD,
@@ -131,7 +138,6 @@ pub fn parse() -> Result<(), FgError> {
         "spline" => SPLINE,
         _ => STD,
     };
-    println!("ctype = {}", ctype);
 
     // let coeffs_only = match matches.occurrences_of("coeffs"){
     //     0 => false,
@@ -145,7 +151,7 @@ pub fn parse() -> Result<(), FgError> {
         let coeffs = read::read_fourier_coeffs(input)?;
         println!("coeffs: \n{}", coeffs);
 
-        fgif::draw_fourier_coeff(coeffs, output, gw, gh, time_interval,
+        fgif::draw_fourier_coeff(coeffs, output, gw, gh, (0.0, 2.0*PI), n_steps,
             &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
     }
     else if ctype == SPLINE {
@@ -154,7 +160,7 @@ pub fn parse() -> Result<(), FgError> {
         let sx = ss[0].clone();
         let sy = ss[1].clone();
 
-        fgif::draw_spline(sx, sy, output, gw, gh, 1000, 
+        fgif::draw_spline(sx, sy, output, gw, gh, n_steps, 
             &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
     }
     else {
@@ -162,14 +168,17 @@ pub fn parse() -> Result<(), FgError> {
         let ss = spline::interpolate_coords(vec![set.xx, set.yy], set.tt);
         let sx = ss[0].clone();
         let sy = ss[1].clone();
-        println!("sx:\n{}", sx);
-        println!("sy:\n{}", sy);
         
-        let coeffs =    if method2 {fourier2::compute_fourier_coeffs(sx, sy, 5)} 
-                        else {fourier::compute_fourier_coeff(sx, sy, 5)};
+        let coeffs =    if method2 {fourier2::compute_fourier_coeffs(& sx, & sy, 5)} 
+                        else {fourier::compute_fourier_coeff(& sx, & sy, 5)};
+        if method2 {
+            println!("Method 2 - {} steps", n_steps);
+        } else {
+            println!("Method 1 - {} steps", n_steps);
+        }
 
         println!("{}", coeffs);
-        fgif::draw_fourier_coeff(coeffs, "hope.gif", gw, gh, time_interval, 
+        fgif::draw_fourier_coeff(coeffs, output, gw, gh, (sx.start(), sx.end()), 1000,
                 &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;  
     }
     println!("Wrote {}", output);

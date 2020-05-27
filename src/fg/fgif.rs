@@ -3,7 +3,6 @@ extern crate gif;
 use gif::{Frame, Encoder, Repeat, SetParameter};
 use std::fs::File;
 use std::io::Error;
-use std::f64::{self, consts::PI};
 use std::borrow::Cow;
 
 use super::fourier::CoeffsSet;
@@ -155,7 +154,7 @@ fn draw_dot(x: usize, y: usize, color: u8,
 /// Draws in filename gif the figure represented by
 /// the Fourier coefficients in coeffs.
 pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
-    time_interval: f64, global_palette: &[u8]) -> Result<(), Error> {
+    t_span: (f64, f64), n_steps: usize, global_palette: &[u8]) -> Result<(), Error> {
 
     // gotest(20, 20, 200, 200);
     let n = coeffs.ppos.len();
@@ -168,8 +167,9 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
     let mut tab_drawing: Box<[u8]> = vect.into_boxed_slice();
     println!("w: {}, h: {}, {}", w as u16, h as u16, (w*h) as usize);
     
-    let mut t: f64 = 0.0;
-    let max = 2.0_f64*PI;
+    let mut t: f64 = t_span.0;
+    let max = t_span.1;
+    let period = t_span.1 - t_span.0;
     while t < max {
         // keep what's already drawed
         let mut tab_lines = tab_drawing.clone();
@@ -211,7 +211,7 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
         draw_dot(xx, yy, 1, &mut *tab_drawing, w, h);
 
         gif.write_frame(&mut *tab_lines);
-        t += time_interval;
+        t += period / n_steps as f64;
     };
 
     Ok(())

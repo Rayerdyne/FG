@@ -11,7 +11,7 @@ use super::fourier::CoeffsSet;
 /// Description of method: 
 /// https://www.overleaf.com/read/frhwfqrnkjjq 
 #[allow(dead_code)]
-pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
+pub fn compute_fourier_coeffs(sx: & Spline, sy: & Spline, n: usize) -> CoeffsSet {
     let (t_i, t_f) = (sx.start(), sx.end());
     assert_eq!(t_i, sy.start());
     assert_eq!(t_f, sy.end());
@@ -27,7 +27,9 @@ pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
 
     let mut coeffs = CoeffsSet::new(n);
 
-    for k in 0..n {
+    coeffs.ppos[0] = Complex::zero();
+    coeffs.nneg[0] = Complex::zero();
+    for k in 1..n {
         coeffs.ppos[k] = compute_one( k as i32,   & sx, & sy, & constants);
         coeffs.nneg[k] = compute_one(-(k as i32), & sx, & sy, & constants);
     }
@@ -37,7 +39,7 @@ pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
 
 /// Computes the k-th fourier coefficient of sx(t) + j * sy(t). 
 /// Achieves the sum over all the spline parts.
-/// Output: \hat f_k
+/// Output:  1/T * \hat f_k
 fn compute_one(k: i32, sx: & Spline, sy: & Spline, constants:&  Constants) 
     -> Complex {
     
@@ -58,7 +60,7 @@ fn compute_one(k: i32, sx: & Spline, sy: & Spline, constants:&  Constants)
         y_k += part_contribution(sy, p, & r, & t_i, & t_f);
     }
 
-    x_k + y_k.times_j()
+    (x_k + y_k.times_j()) / (2.0 * PI * constants.omega_0_inv.na)
 }
 
 /// Computes the contribution of the p-th part of the spline to the fourier
@@ -69,8 +71,8 @@ fn part_contribution(s: & Spline, p: usize, r: & FourTerms,
 
     let part = s.part(p);
     
-    primitive(part, & t_i, & r) -  
-    primitive(part, & t_f, & r)
+    primitive(part, & t_f, & r) -  
+    primitive(part, & t_i, & r)
 }
 
 /// Computes the value of the primitive (there is only one primitive...).
@@ -86,31 +88,6 @@ fn primitive(sp: SplinePart, t: & ThreeTerms, r: & FourTerms) -> Complex {
         im: term_1 - term_3
     } * Complex::expj(-t.na / r.na)
 }
-/*
-/// Holds a set of Fourier coefficients.
-#[derive(Debug)]
-pub struct CoeffsSet {
-    pub ppos: Vec<Complex>,
-    pub nneg: Vec<Complex>,
-    //doubled character because vector
-}
-
-impl CoeffsSet {
-    fn new(n: usize) -> CoeffsSet {
-        CoeffsSet {     ppos: vec![Complex::zero(); n],
-                        nneg: vec![Complex::zero(); n],     }
-    }
-}
-
-impl fmt::Display for CoeffsSet {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = String::new();
-        for i in 0..self.ppos.len() {
-            s.push_str(&format!("{}:\t+{:?}\n\t-{:?}\n", i, self.ppos[i], self.nneg[i]));
-        }
-        write!(f, "{}", s)
-    }
-}*/
 
 /// Holds 4 terms, which are powers of the na member 
 #[derive(Debug)]

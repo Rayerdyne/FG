@@ -36,7 +36,7 @@ impl fmt::Display for CoeffsSet {
 /// (x(t), y(t)) = (sx(t), sy(t)), so that we integrate
 /// sx(t) + i * sy(t)
 #[allow(dead_code)]
-pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
+pub fn compute_fourier_coeff(sx: & Spline, sy: & Spline, n: usize) -> CoeffsSet {
     let (t_i, t_f) = (sx.start(), sx.end());
     assert_eq!(t_i, sy.start());
     assert_eq!(t_f, sy.end());
@@ -44,7 +44,6 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
 
     let period = t_f - t_i;
     let omega_0 = 2.0 * PI / period;
-    println!("period: {}", period);
     
     let mut coeffs = CoeffsSet::new(n);
     

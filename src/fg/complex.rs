@@ -53,9 +53,23 @@ impl std::ops::MulAssign for Complex {
         self.im = new_im;
     }
 }
+impl std::ops::Mul<f64> for Complex {
+    type Output = Self;
+    fn mul(self, a: f64) -> Self {
+        Self {  re: a * self.re,
+                im: a * self.im }
+    }
+}
 impl std::ops::MulAssign<f64> for Complex {
     fn mul_assign(&mut self, div: f64) {    self.re *= div;
                                             self.im *= div;     }
+}
+impl std::ops::Div<f64> for Complex {
+    type Output = Self;
+    fn div(self, a: f64) -> Self {
+        Self {  re: self.re / a,
+                im: self.im / a }
+    }
 }
 impl std::ops::DivAssign<f64> for Complex {
     fn div_assign(&mut self, div: f64) {    self.re /= div;
