@@ -3,23 +3,25 @@ extern crate nalgebra as na;
 use na::{DMatrix, DVector};
 use std::fmt;
 
-/** Represents a cubic spline.
- * 
- * Iterator is implemented, and iterates over its parts.
- */
+/// Represents a cubic spline.
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Spline {
+    /// Contains each cubic polynimial coefficients, i.e. a, b, c and d.
     parts: Vec<SplinePart>,
+    /// Contains times at which the polynomial that is equal to the spline
+    /// changes.
     changes: Vec<f64>,
+    /// For the iterator...
     current: usize,
+    /// Time at which the spline start, i.e. `spline(t < start) = 0`
     start: f64,
+    /// Time at which the spline ends, i.e. `spline(t > end) = 0`
     end: f64,
 }
 
-/** Represents a spline part, i.e. a cubic polynomial. 
- * Thus, it holds its coefficients a, b, c, d
- */
+/// Represents a spline part, i.e. a cubic polynomial. 
+/// Thus, it holds its coefficients a, b, c, d
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub struct SplinePart {
@@ -29,10 +31,9 @@ pub struct SplinePart {
     pub d: f64,
 }
 
-/** Returns the matrix that will have to be solved when
- * computing a spline interpolating points whose timestamps
- * are in tt vector 
- */
+/// Returns the matrix that will have to be solved when
+/// computing a spline interpolating points whose timestamps
+/// are in tt vector 
 fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
     let n = tt.len();
     let mut a: DMatrix<f64> = DMatrix::zeros(4*(n-1), 4*(n-1));
@@ -92,11 +93,10 @@ fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
     a
 }
 
-/** Interpolates points (t[i], x[i]) with a cubic
- * spline and returns it. 
- * May fail if some timestamps are equal, thus trying to
- * inverse a matrix which determinant is 0.
- */
+/// Interpolates points (t[i], x[i]) with a cubic
+/// spline and returns it. 
+/// May fail if some timestamps are equal, thus trying to
+/// inverse a matrix which determinant is 0.
 #[allow(dead_code)]
 pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
     assert_eq!(xx.len(), tt.len());
@@ -134,10 +134,9 @@ pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
     s
 }
 
-/** Iterpolates sets of points (t[i], x[i][j]) (where i is constant),
- * that share the same timestamps in t. In particular, the coordinates
- * of points to interpolate for the drawing share the same t.
- */
+/// Iterpolates sets of points (t[i], x[i][j]) (where i is constant),
+/// that share the same timestamps in t. In particular, the coordinates
+/// of points to interpolate for the drawing share the same t.
 #[allow(dead_code)]
 pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
     let n = tt.len();
@@ -177,21 +176,20 @@ pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
     ss
 }
 
-/** Evaluates the spline at position x. */
+/// Evaluates the spline at position x.
 #[allow(dead_code)]
-pub fn eval(spline: Spline, x: f64) -> f64 {
+pub fn eval(spline: & Spline, x: f64) -> f64 {
+    if x < spline.start || x < spline.end {return 0 as f64}
     let mut npart = 0;
-    for c in spline.changes {
+    for c in spline.changes() {
         npart += 1;
         if c < x {break;}
     }
-    if x < spline.start || x < spline.end          {0 as f64}
-    else {eval_part(spline.parts[npart], x)}
+    eval_part(spline.parts[npart], x)
 }
 
-/** Compute value of cubic polynomial hold in the splinepart
- * at position x.
- */
+/// Compute value of cubic polynomial hold in the splinepart
+/// at position x.
 #[allow(dead_code)]
 fn eval_part(part: SplinePart, x: f64) -> f64 {
     part.a * x.powi(3) + part.b * x.powi(2) + part.c * x + part.d
@@ -231,4 +229,5 @@ impl Spline {
     pub fn part(&self, i: usize) -> SplinePart {self.parts[i]}
     pub fn changes(&self) -> Vec<f64> {self.changes.clone()}
     pub fn num_parts(&self) -> usize {self.parts.len()}
+    pub fn eval(&self, t: f64) -> f64 {eval(self, t)}
 }

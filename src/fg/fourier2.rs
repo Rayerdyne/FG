@@ -1,16 +1,15 @@
 use super::spline::*;
 use super::complex::*;
 use std::f64::{self, consts::PI};
-use std::fmt;
+use super::fourier::CoeffsSet;
 
-/** Integrates a cubic spline path and returns a set of 
- * Fourier coefficients. 
- * The path is described as 
- * (x(t), y(t)) = (sx(t), sy(t)), so that we integrate
- * sx(t) + j * sy(t) 
- * Description of method: 
- * https://www.overleaf.com/read/frhwfqrnkjjq 
- * */
+/// Integrates a cubic spline path and returns a set of 
+/// Fourier coefficients. 
+/// The path is described as 
+/// (x(t), y(t)) = (sx(t), sy(t)), so that we integrate
+/// sx(t) + j * sy(t) 
+/// Description of method: 
+/// https://www.overleaf.com/read/frhwfqrnkjjq 
 #[allow(dead_code)]
 pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     let (t_i, t_f) = (sx.start(), sx.end());
@@ -18,7 +17,7 @@ pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     assert_eq!(t_f, sy.end());
     assert_eq!(sx.num_parts(), sy.num_parts());
 
-    // aside: T makes rustc complain
+    // aside: T as a variable name makes rustc complain
     let period = t_f - t_i; 
     let omega_0_na = 2.0 * PI / period;
     let constants = Constants {
@@ -36,10 +35,9 @@ pub fn compute_fourier_coeffs(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     coeffs
 }
 
-/**
- * Computes the k-th fourier coefficient of sx(t) + j * sy(t). 
- * Achieves the sum over all the spline parts. 
- */
+/// Computes the k-th fourier coefficient of sx(t) + j * sy(t). 
+/// Achieves the sum over all the spline parts.
+/// Output: \hat f_k
 fn compute_one(k: i32, sx: & Spline, sy: & Spline, constants:&  Constants) 
     -> Complex {
     
@@ -63,19 +61,20 @@ fn compute_one(k: i32, sx: & Spline, sy: & Spline, constants:&  Constants)
     x_k + y_k.times_j()
 }
 
-/**
- * Computes the contribution of the p-th part of the spline to the fourier
- * coefficient (of function s(t)) value, between t_i and t_f.
- */
+/// Computes the contribution of the p-th part of the spline to the fourier
+/// coefficient (of function s(t)) value, between t_i and t_f.
+/// Output: \hat x_{k, p}
 fn part_contribution(s: & Spline, p: usize, r: & FourTerms,
     t_i: & ThreeTerms, t_f: & ThreeTerms) -> Complex {
 
     let part = s.part(p);
     
-    primitive(part, & t_i, & r) * Complex::expj(-t_i.na / r.na) -  
-    primitive(part, & t_f, & r) * Complex::expj(-t_f.na / r.na)
+    primitive(part, & t_i, & r) -  
+    primitive(part, & t_f, & r)
 }
 
+/// Computes the value of the primitive (there is only one primitive...).
+/// Output: F(k, a, b, c, d, t)
 fn primitive(sp: SplinePart, t: & ThreeTerms, r: & FourTerms) -> Complex {
     let term_1 = r.na * (sp.a * t.cu + sp.b * t.sq + sp.c * t.na + sp.d);
     let term_2 = r.sq * (3.0 * sp.a * t.sq + 2.0 * sp.b * t.na + sp.c);
@@ -85,10 +84,10 @@ fn primitive(sp: SplinePart, t: & ThreeTerms, r: & FourTerms) -> Complex {
     Complex {
         re: term_2 - term_4,
         im: term_1 - term_3
-    }    
+    } * Complex::expj(-t.na / r.na)
 }
-
-/** Holds a set of Fourier coefficients. */
+/*
+/// Holds a set of Fourier coefficients.
 #[derive(Debug)]
 pub struct CoeffsSet {
     pub ppos: Vec<Complex>,
@@ -111,9 +110,9 @@ impl fmt::Display for CoeffsSet {
         }
         write!(f, "{}", s)
     }
-}
+}*/
 
-/** Holds 4 terms, which are powers of the na member */
+/// Holds 4 terms, which are powers of the na member 
 #[derive(Debug)]
 struct FourTerms {
     na: f64, // natural
@@ -151,9 +150,7 @@ impl ThreeTerms {
     }
 }
 
-/**
- * Holds values that will remain constant to avoid unuseful recomputation.
- */
+/// Holds values that will remain constant to avoid unuseful recomputation.
 #[derive(Debug)]
 struct Constants {
     omega_0_inv: FourTerms,

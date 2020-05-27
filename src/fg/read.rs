@@ -4,7 +4,8 @@ use std::str::FromStr;
 use std::fmt;
 use std::num::ParseFloatError;
 
-use super::fourier::{Complex, CoeffsSet};
+use super::fourier::CoeffsSet;
+use super::complex::Complex;
 
 /** Represents error that could happen when reading files
  * 

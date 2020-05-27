@@ -11,11 +11,10 @@ use std::fmt;
 use std::num::ParseIntError;
 use clap::{Arg, App};
 
-/** Error type returned by `parse()` function,
- * represents what's could go wrong.
- * 
- * fmt::Display is logically implemented =)
- */
+/// Error type returned by `parse()` function,
+/// represents what's could go wrong.
+/// 
+/// fmt::Display is logically implemented =)
 #[allow(dead_code)]
 pub enum FgError {
     ReadingError(read::ReadingError),
@@ -44,9 +43,7 @@ impl std::convert::From<std::io::Error> for FgError {
     }
 }
 
-/** Parses arguments provided to the program, and process to execution
- * RETURN       Result<(), FgError>
- */
+/// Parses arguments provided to the program, and process to execution
 #[allow(dead_code)]
 pub fn parse() -> Result<(), FgError> {
     
@@ -90,9 +87,14 @@ pub fn parse() -> Result<(), FgError> {
                     .help("Sets the time between two lines drawing in the output."))
             .arg(Arg::with_name("coeffs")
                 .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
-                        `(c_k re,c_k im)&(c_-k re, c_-k im)`")
+                        `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))`")
                 .long("coeffs")
                 .short("c"))
+            .arg(Arg::with_name("method")
+                .short("2")
+                .long("method2")
+                .takes_value(false)
+                .help("If present, use fourier2.rs content"))
             .get_matches();
 
     let fcolor = matches.value_of("fcolor").unwrap_or("0x000000");
@@ -115,6 +117,10 @@ pub fn parse() -> Result<(), FgError> {
     let coeffs_only = match matches.occurrences_of("coeffs"){
         0 => false,
         _ => true, };
+    
+    let method2 = match matches.occurrences_of("method") {
+        0 => false,
+        _ => true, };
 
     if coeffs_only {
         let coeffs = read::read_fourier_coeffs(input)?;
@@ -131,7 +137,8 @@ pub fn parse() -> Result<(), FgError> {
         println!("sx:\n{}", sx);
         println!("sy:\n{}", sy);
         
-        let coeffs = fourier::compute_fourier_coeff(sx, sy, 5);
+        let coeffs =    if method2 {fourier2::compute_fourier_coeffs(sx, sy, 5)} 
+                        else {fourier::compute_fourier_coeff(sx, sy, 5)};
 
         println!("{}", coeffs);
         fgif::draw_fourier_coeff(coeffs, "hope.gif", gw, gh, time_interval, 

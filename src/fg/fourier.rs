@@ -1,15 +1,9 @@
 use super::spline::*;
 use std::f64::{self, consts::PI};
 use std::fmt;
+use super::complex::Complex;
 
-/** Holds a complex number */
-#[derive(Debug, Clone, Copy)]
-pub struct Complex {
-    pub re: f64,
-    pub im: f64,
-}
-
-/** Holds a set of Fourier coefficients. */
+/// Holds a set of Fourier coefficients. 
 #[derive(Debug)]
 pub struct CoeffsSet {
     pub ppos: Vec<Complex>,
@@ -17,36 +11,8 @@ pub struct CoeffsSet {
     //doubled character because vector
 }
 
-impl std::ops::AddAssign for Complex {
-    fn add_assign(&mut self, c: Complex) {
-        self.re += c.re;
-        self.im += c.im;
-    }
-}
-impl std::ops::DivAssign<f64> for Complex {
-    fn div_assign(&mut self, div: f64) {
-        self.re /= div;
-        self.im /= div;
-    }
-}
-
-impl Complex {
-    fn times_i(&mut self) -> Complex {
-        let temp = self.re;
-        self.re = -self.im;
-        self.im = temp;
-        *self
-    }
-    fn zero() -> Complex {
-        Complex {
-            re: 0.0,
-            im: 0.0,
-        }
-    }
-}
-
 impl CoeffsSet {
-    fn new(n: usize) -> CoeffsSet {
+    pub fn new(n: usize) -> CoeffsSet {
         CoeffsSet {
             ppos: vec![Complex::zero(); n],
             nneg: vec![Complex::zero(); n],
@@ -64,11 +30,11 @@ impl fmt::Display for CoeffsSet {
     }
 }
 
-/** Integrates a cubic spline path and returns a set of 
- * Fourier coefficients. 
- * The path is described as 
- * (x(t), y(t)) = (sx(t), sy(t)), so that we integrate
- * sx(t) + i * sy(t) */
+/// Integrates a cubic spline path and returns a set of 
+/// Fourier coefficients. 
+/// The path is described as 
+/// (x(t), y(t)) = (sx(t), sy(t)), so that we integrate
+/// sx(t) + i * sy(t)
 #[allow(dead_code)]
 pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     let (t_i, t_f) = (sx.start(), sx.end());
@@ -104,10 +70,9 @@ pub fn compute_fourier_coeff(sx: Spline, sy: Spline, n: usize) -> CoeffsSet {
     coeffs
 }
 
-/** As integration is additive, adds to coeffset the contribution
- * to the integral due to CubicIntegrators vx (along x axis) and 
- * vy (along y axis).
-*/
+/// As integration is additive, adds to coeffset the contribution
+/// to the integral due to CubicIntegrators vx (along x axis) and 
+/// vy (along y axis).
 #[allow(dead_code)]
 fn add_splines_contributions(coeffs: &mut CoeffsSet, vx: &CubicIntegrator, vy: &CubicIntegrator) {
     let n = coeffs.ppos.len();
@@ -125,14 +90,14 @@ fn add_splines_contributions(coeffs: &mut CoeffsSet, vx: &CubicIntegrator, vy: &
         let mut p_contr_y = integral_12(vy, i, false);
         let mut n_contr_y = integral_12(vy, i, true);
 
-        coeffs.ppos[i] += p_contr_y.times_i();
-        coeffs.nneg[i] += n_contr_y.times_i();
+        coeffs.ppos[i] += p_contr_y.times_j();
+        coeffs.nneg[i] += n_contr_y.times_j();
         }
     // ok this is not optimal.
     // but it will be ok
 }
 
-/* Integrates CubicIntegrator. */
+/// Integrates CubicIntegrator. 
 fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
     let k: f64 = if negative { (k_index as f64)*(-1.0)}
                  else {k_index as f64};
@@ -173,9 +138,8 @@ fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
     }
 }
 
-/* Set of 4 variables, meaningless until you make
- * calculations by youself... 
- * */
+/// Set of 4 variables, meaningless until you make
+/// calculations by youself... 
 #[derive(Clone, Copy)]
 struct VarSet {
     m1: f64,
@@ -208,9 +172,9 @@ impl VarSet {
     }
 }
 
-/** Holds variables in order to integrate a part of a spline. 
- * Proccessing to manual integration will be very
- * useful in order to understant these mechanisms. */
+/// Holds variables in order to integrate a part of a spline. 
+/// Proccessing to manual integration will be very
+/// useful in order to understant these mechanisms.
 struct CubicIntegrator {
     r1: VarSet,
     r2: VarSet,

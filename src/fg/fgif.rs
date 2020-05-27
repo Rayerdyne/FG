@@ -7,6 +7,7 @@ use std::f64::{self, consts::PI};
 use std::borrow::Cow;
 
 use super::fourier::CoeffsSet;
+use super::spline::*;
 
 #[allow(dead_code)]
 struct MyGif<'a> {
@@ -151,9 +152,8 @@ fn draw_dot(x: usize, y: usize, color: u8,
 
 /* see https://fr.wikipedia.org/wiki/Algorithme_de_trac%C3%A9_de_segment_de_Bresenham */
 
-/** Draws in filename gif the figure represented by
- * the Fourier coefficients in coeffs.
- */
+/// Draws in filename gif the figure represented by
+/// the Fourier coefficients in coeffs.
 pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
     time_interval: f64, global_palette: &[u8]) -> Result<(), Error> {
 
@@ -214,6 +214,27 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
         t += time_interval;
     };
 
+    Ok(())
+}
+
+#[allow(dead_code)]
+pub fn draw_spline(sx: Spline, sy: Spline, filename: &str, w: usize, h: usize,
+    time_interval: f64, n:usize, global_palette: &[u8]) -> Result<(), Error> {
+
+    let mut output = File::create(filename)?;
+    let mut gif = MyGif::new(&mut output, w as u16, h as u16, global_palette);
+
+    let vect = vec![0; (w*h) as usize];
+    let mut tab: Box<[u8]> = vect.into_boxed_slice();
+
+
+    let mut t: f64 = 0.0;
+    while t < time_interval {
+        let (x, y) = (sx.eval(t) as usize, sy.eval(t) as usize);
+        draw_dot(x, y, 1, &mut *tab, w, h);
+        t += time_interval / n as f64;
+    }
+    gif.write_frame(&mut *tab);
     Ok(())
 }
 
