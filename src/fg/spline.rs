@@ -179,18 +179,17 @@ pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
 /// Evaluates the spline at position x.
 #[allow(dead_code)]
 pub fn eval(spline: & Spline, x: f64) -> f64 {
-    if x < spline.start || x < spline.end {return 0 as f64}
+    if x < spline.start || x > spline.end {return 0 as f64}
     let mut npart = 0;
     for c in spline.changes() {
+        if x < c {break;}
         npart += 1;
-        if c < x {break;}
     }
-    eval_part(spline.parts[npart], x)
+    eval_part(spline.parts[npart-1], x)
 }
 
 /// Compute value of cubic polynomial hold in the splinepart
 /// at position x.
-#[allow(dead_code)]
 fn eval_part(part: SplinePart, x: f64) -> f64 {
     part.a * x.powi(3) + part.b * x.powi(2) + part.c * x + part.d
 }

@@ -93,7 +93,7 @@ pub fn parse() -> Result<(), FgError> {
             //             `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))`")
             //     .long("coeffs")
             //     .short("c"))
-            .arg(Arg::with_name("type")
+            .arg(Arg::with_name("test")
                 .takes_value(true)
                 .possible_values(&["coeffs", "spline"])
                 .help("Coeffs: uputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
@@ -125,7 +125,7 @@ pub fn parse() -> Result<(), FgError> {
     let stime_interval = matches.value_of("height").unwrap_or("0.05");
     let time_interval = stime_interval.parse::<f64>().unwrap_or(0.05);
 
-    let ctype = match matches.value_of("type").unwrap_or("std") {
+    let ctype = match matches.value_of("test").unwrap_or("std") {
         "std" => STD,
         "coeffs" => COEFFS_ONLY,
         "spline" => SPLINE,
@@ -154,7 +154,7 @@ pub fn parse() -> Result<(), FgError> {
         let sx = ss[0].clone();
         let sy = ss[1].clone();
 
-        fgif::draw_spline(sx, sy, output, gw, gh, time_interval, 1000, 
+        fgif::draw_spline(sx, sy, output, gw, gh, 1000, 
             &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;
     }
     else {
@@ -172,6 +172,7 @@ pub fn parse() -> Result<(), FgError> {
         fgif::draw_fourier_coeff(coeffs, "hope.gif", gw, gh, time_interval, 
                 &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;  
     }
+    println!("Wrote {}", output);
     Ok(())
 }
 

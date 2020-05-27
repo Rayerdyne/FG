@@ -219,7 +219,7 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
 
 #[allow(dead_code)]
 pub fn draw_spline(sx: Spline, sy: Spline, filename: &str, w: usize, h: usize,
-    time_interval: f64, n:usize, global_palette: &[u8]) -> Result<(), Error> {
+     n:usize, global_palette: &[u8]) -> Result<(), Error> {
 
     let mut output = File::create(filename)?;
     let mut gif = MyGif::new(&mut output, w as u16, h as u16, global_palette);
@@ -228,11 +228,16 @@ pub fn draw_spline(sx: Spline, sy: Spline, filename: &str, w: usize, h: usize,
     let mut tab: Box<[u8]> = vect.into_boxed_slice();
 
 
+    let period = sx.end() - sx.start();
     let mut t: f64 = 0.0;
-    while t < time_interval {
-        let (x, y) = (sx.eval(t) as usize, sy.eval(t) as usize);
-        draw_dot(x, y, 1, &mut *tab, w, h);
-        t += time_interval / n as f64;
+    let cx = w / 2;
+    let cy = h / 2;
+
+    while t < period {
+        let (dx, dy) = (sx.eval(t), sy.eval(t));
+        let (x, y) = (cx as f64 + dx, cy as f64 + dy);
+        draw_dot(x as usize, y as usize, 1, &mut *tab, w, h);
+        t += period / n as f64;
     }
     gif.write_frame(&mut *tab);
     Ok(())
