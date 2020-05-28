@@ -1,6 +1,5 @@
 mod complex;
 mod fourier;
-mod fourier2;
 mod fgif;
 mod spline;
 mod read;
@@ -48,89 +47,26 @@ const STD: u8 = 1;
 const COEFFS_ONLY: u8 = 2;
 const SPLINE: u8 = 3;
 
-const DEF_HEIGHT: usize = 300;
+const DEF_HEIGHT: usize = 200;
 const DEF_WIDTH: usize = 300;
 const DEF_N_STEPS: usize = 200;
+const DEF_N_COEFFS: usize = 5;
 /// Parses arguments provided to the program, and process to execution
 #[allow(dead_code)]
 pub fn parse() -> Result<(), FgError> {
     
-    let matches = App::new("fg")
-            .version("0.1.0")
-            .author("François Straet")
-            .about("Drawings with Fourier series")
-            .arg(Arg::with_name("input")
-                .help("Sets the input file, containing the points of the drawing formatted as: `t: (x, y)`")
-                .required(true)
-                .index(1))
-            .arg(Arg::with_name("output")
-                .short("o")
-                .long("output")
-                .takes_value(true)
-                .help("Sets the name of output file, `output.gif` if not provided"))
-            .arg(Arg::with_name("fcolor")
-                .short("f")
-                .long("fcolor")
-                .takes_value(true)
-                .help("Sets the foreground color used in the output (hexcode)"))
-            .arg(Arg::with_name("bcolor")
-                .short("b")
-                .long("bcolor")
-                .takes_value(true)
-                .help("Sets the background color used in the output (hexcode)"))
-            .arg(Arg::with_name("width")
-                .short("W")
-                .long("gifwidth")
-                .takes_value(true)
-                .help("Sets the output's width"))
-            .arg(Arg::with_name("height")
-                .short("H")
-                .long("gifheight")
-                .takes_value(true)
-                .help("Sets the output's height"))
-            .arg(Arg::with_name("n_steps")
-                    .short("n")
-                    .long("n-steps")
-                    .takes_value(true)
-                    .help("Sets the numbers of frames of the output."))
-            // .arg(Arg::with_name("coeffs")
-            //     .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
-            //             `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))`")
-            //     .long("coeffs")
-            //     .short("c"))
-            .arg(Arg::with_name("test")
-                .takes_value(true)
-                .possible_values(&["coeffs", "spline"])
-                .help("Coeffs: uputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
-                        `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))` \n
-                        Spline: only draws the spline.")
-                .long("type")
-                .short("t"))
-            .arg(Arg::with_name("method")
-                .short("2")
-                .long("method2")
-                .takes_value(false)
-                .help("If present, use fourier2.rs content"))
-            .get_matches();
+    let matches = app_args();
 
-    let fcolor = matches.value_of("fcolor").unwrap_or("0x000000");
-    let fc = color_from_hex(fcolor).unwrap();
-
-    let bcolor = matches.value_of("bcolor").unwrap_or("0xFFFFFF");
-    let bc = color_from_hex(bcolor).unwrap();
+    let fc = get_color(& matches, "fcolor", "0x000000");
+    let bc = get_color(& matches, "bcolor", "0xFFFFFF");
 
     let input = matches.value_of("input").unwrap();
     let output = matches.value_of("output").unwrap_or("output.gif");
 
-    let def_width_str = DEF_WIDTH.to_string();
-    let def_height_str = DEF_WIDTH.to_string();
-    let def_n_steps_str = DEF_N_STEPS.to_string();
-    let sgw = matches.value_of("width").unwrap_or(& def_width_str);
-    let gw = sgw.parse::<usize>().unwrap_or(DEF_WIDTH);
-    let sgh = matches.value_of("height").unwrap_or(& def_height_str);
-    let gh = sgh.parse::<usize>().unwrap_or(DEF_HEIGHT);
-    let sn_steps = matches.value_of("n_steps").unwrap_or(& def_n_steps_str);
-    let n_steps = sn_steps.parse::<usize>().unwrap_or(DEF_N_STEPS);
+    let gw = get_value(& matches, "width", DEF_WIDTH);
+    let gh = get_value(& matches, "width", DEF_HEIGHT);
+    let n_steps = get_value(& matches, "width", DEF_N_STEPS);
+    let n_coeffs = get_value(& matches, "n_coeffs", DEF_N_COEFFS);
 
     let ctype = match matches.value_of("test").unwrap_or("std") {
         "std" => STD,
@@ -138,14 +74,6 @@ pub fn parse() -> Result<(), FgError> {
         "spline" => SPLINE,
         _ => STD,
     };
-
-    // let coeffs_only = match matches.occurrences_of("coeffs"){
-    //     0 => false,
-    //     _ => true, };
-    
-    let method2 = match matches.occurrences_of("method") {
-        0 => false,
-        _ => true, };
 
     if ctype == COEFFS_ONLY {
         let coeffs = read::read_fourier_coeffs(input)?;
@@ -169,25 +97,87 @@ pub fn parse() -> Result<(), FgError> {
         let sx = ss[0].clone();
         let sy = ss[1].clone();
         
-        let coeffs =    if method2 {fourier2::compute_fourier_coeffs(& sx, & sy, 5)} 
-                        else {fourier::compute_fourier_coeff(& sx, & sy, 5)};
-        if method2 {
-            println!("Method 2 - {} steps", n_steps);
-        } else {
-            println!("Method 1 - {} steps", n_steps);
-        }
+        let coeffs = fourier::compute_fourier_coeffs(& sx, & sy, n_coeffs);
 
         println!("{}", coeffs);
-        fgif::draw_fourier_coeff(coeffs, output, gw, gh, (sx.start(), sx.end()), 1000,
-                &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;  
+        fgif::draw_fourier_coeff(coeffs, output, gw, gh, (sx.start(), sx.end()),
+            n_steps, &[bc.0, bc.1, bc.2, fc.0, fc.1, fc.2])?;  
     }
-    println!("Wrote {}", output);
+    println!("Wrote {} frames in {} ({}, {}), with {} coeffs", n_steps, output,
+        gw, gh, n_coeffs);
     Ok(())
+}
+
+fn app_args() -> clap::ArgMatches<'static> {
+    App::new("fg")
+        .version("0.1.0")
+        .author("François Straet")
+        .about("Drawings with Fourier series")
+        .arg(Arg::with_name("input")
+            .help("Sets the input file, containing the points of the drawing formatted as: `t: (x, y)`")
+            .required(true)
+            .index(1))
+        .arg(Arg::with_name("output")
+            .short("o")
+            .long("output")
+            .takes_value(true)
+            .help("Sets the name of output file, `output.gif` if not provided"))
+        .arg(Arg::with_name("fcolor")
+            .short("f")
+            .long("fcolor")
+            .takes_value(true)
+            .help("Sets the foreground color used in the output (hexcode)"))
+        .arg(Arg::with_name("bcolor")
+            .short("b")
+            .long("bcolor")
+            .takes_value(true)
+            .help("Sets the background color used in the output (hexcode)"))
+        .arg(Arg::with_name("width")
+            .short("W")
+            .long("gifwidth")
+            .takes_value(true)
+            .help("Sets the output's width"))
+        .arg(Arg::with_name("height")
+            .short("H")
+            .long("gifheight")
+            .takes_value(true)
+            .help("Sets the output's height"))
+        .arg(Arg::with_name("n_steps")
+                .short("n")
+                .long("n-steps")
+                .takes_value(true)
+                .help("Sets the numbers of frames of the output."))
+        .arg(Arg::with_name("n_coeffs")
+            .short("c")
+            .long("n-coeffs")
+            .takes_value(true)
+            .help("Sets Fourier coefficients computed and used."))
+        // .arg(Arg::with_name("coeffs")
+        //     .help("Ouputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
+        //             `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))`")
+        //     .long("coeffs")
+        //     .short("c"))
+        .arg(Arg::with_name("test")
+            .takes_value(true)
+            .possible_values(&["coeffs", "spline"])
+            .help("Coeffs: uputs drawing of custom Fourier coefficients in the input, which has to be formatted as\n \
+                    `(Re(c_k),Im(c_k))&(Re(c_-k) , Im(c_-k))` \n
+                    Spline: only draws the spline.")
+            .long("type")
+            .short("t"))
+        .get_matches()
 }
 
 #[allow(dead_code)]
 pub fn test_gif(a: usize, b: usize, c: usize, d: usize) {
     fgif::gotest(a, b, c, d);
+}
+
+/// Get a color desribed in argument, default value if not present.
+fn get_color(matches: & clap::ArgMatches, name: & str, def: & str) 
+    -> (u8, u8, u8) {
+    let s = matches.value_of(name).unwrap_or(def);
+    color_from_hex(s).unwrap()
 }
 
 /* Parses a color written in hexcode (0xrrggbb) to a tuple (r, g, b) */
@@ -199,4 +189,10 @@ fn color_from_hex(s: &str) -> Result <(u8, u8, u8), ParseIntError> {
     let b = u8::from_str_radix(&without_prefix[4..6], 16)?;
 
     Ok((r, g, b))
+}
+
+fn get_value(matches: & clap::ArgMatches, name: & str, def: usize) -> usize {
+    let def_str = def.to_string();
+    let s = matches.value_of(name).unwrap_or(& def_str);
+    s.parse::<usize>().unwrap_or(def)
 }

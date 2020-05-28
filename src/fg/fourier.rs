@@ -1,7 +1,138 @@
 use super::spline::*;
+use super::complex::*;
 use std::f64::{self, consts::PI};
 use std::fmt;
-use super::complex::Complex;
+
+/// Integrates a cubic spline path and returns a set of 
+/// Fourier coefficients. 
+/// The path is described as 
+/// (x(t), y(t)) = (sx(t), sy(t)), so that we integrate
+/// sx(t) + j * sy(t) 
+/// Description of method: 
+/// https://www.overleaf.com/read/frhwfqrnkjjq 
+#[allow(dead_code)]
+pub fn compute_fourier_coeffs(sx: & Spline, sy: & Spline, n: usize) -> CoeffsSet {
+    let (t_i, t_f) = (sx.start(), sx.end());
+    assert_eq!(t_i, sy.start());
+    assert_eq!(t_f, sy.end());
+    assert_eq!(sx.num_parts(), sy.num_parts());
+
+    // aside: T as a variable name makes rustc complain
+    let period = t_f - t_i; 
+    let omega_0_na = 2.0 * PI / period;
+    let constants = Constants {
+        omega_0_inv: FourTerms::new_pwr(1.0 / omega_0_na),
+        changes: sx.changes()
+    };
+
+    let mut coeffs = CoeffsSet::new(n);
+
+    coeffs.ppos[0] = Complex::zero();
+    coeffs.nneg[0] = Complex::zero();
+    for k in 1..n {
+        coeffs.ppos[k] = compute_one( k as i32,   & sx, & sy, & constants);
+        coeffs.nneg[k] = compute_one(-(k as i32), & sx, & sy, & constants);
+    }
+
+    coeffs
+}
+
+/// Computes the k-th fourier coefficient of sx(t) + j * sy(t). 
+/// Achieves the sum over all the spline parts.
+/// Output:  1/T * \hat f_k
+fn compute_one(k: i32, sx: & Spline, sy: & Spline, constants:&  Constants) 
+    -> Complex {
+    
+    let r = FourTerms::new( constants.omega_0_inv.na / k as f64,
+        constants.omega_0_inv.sq / k.pow(2) as f64,
+        constants.omega_0_inv.cu / k.pow(3) as f64,
+        constants.omega_0_inv.fo / k.pow(4) as f64 );
+    
+    let mut x_k = Complex::zero();
+    let mut y_k = Complex::zero();
+
+    let mut t_i: ThreeTerms;
+    let mut t_f: ThreeTerms = ThreeTerms::new_pwr(sx.start());
+    for p in 0..sx.num_parts() {
+        t_i = t_f;
+        t_f = ThreeTerms::new_pwr(sx.changes()[p+1]);
+        x_k += part_contribution(sx, p, & r, & t_i, & t_f);
+        y_k += part_contribution(sy, p, & r, & t_i, & t_f);
+    }
+
+    (x_k + y_k.times_j()) / (sx.end() - sx.start())
+}
+
+/// Computes the contribution of the p-th part of the spline to the fourier
+/// coefficient (of function s(t)) value, between t_i and t_f.
+/// Output: \hat x_{k, p}
+fn part_contribution(s: & Spline, p: usize, r: & FourTerms,
+    t_i: & ThreeTerms, t_f: & ThreeTerms) -> Complex {
+
+    let part = s.part(p);
+    
+    primitive(part, & t_f, & r) -  
+    primitive(part, & t_i, & r)
+}
+
+/// Computes the value of the primitive (there is only one primitive...).
+/// Output: F(k, a, b, c, d, t)
+fn primitive(sp: SplinePart, t: & ThreeTerms, r: & FourTerms) -> Complex {
+    let term_1 = r.na * (sp.a * t.cu + sp.b * t.sq + sp.c * t.na + sp.d);
+    let term_2 = r.sq * (3.0 * sp.a * t.sq + 2.0 * sp.b * t.na + sp.c);
+    let term_3 = r.cu * (6.0 * sp.a * t.na + 2.0 * sp.b);
+    let term_4 = r.fo * (6.0 * sp.a);
+
+    Complex {
+        re: term_2 - term_4,
+        im: term_1 - term_3
+    } * Complex::expj(-t.na / r.na)
+}
+
+/// Holds 4 terms, which are powers of the na member 
+#[derive(Debug)]
+struct FourTerms {
+    na: f64, // natural
+    sq: f64, // squared
+    cu: f64, // cubed
+    fo: f64  // to the forth
+}
+
+impl FourTerms {
+    fn new (na: f64, sq: f64, cu: f64, fo: f64) -> Self {
+        Self {  na: na,     sq: sq,
+                cu: cu,     fo: fo                  }
+    }
+    fn new_pwr (na: f64) -> Self {
+        Self {  na: na,            sq: na.powi(2),
+                cu: na.powi(3),    fo: na.powi(4)   }
+    }
+}
+
+struct ThreeTerms {
+    na: f64, // natural
+    sq: f64, // squared
+    cu: f64, // cubed
+}
+
+#[allow(dead_code)]
+impl ThreeTerms {
+    fn new (na: f64, sq: f64, cu: f64) -> Self {
+        Self {  na: na,     sq: sq,
+                cu: cu,          }
+    }
+    fn new_pwr (na: f64) -> Self {
+        Self {  na: na,         sq: na.powi(2),
+                cu: na.powi(3)   }
+    }
+}
+
+/// Holds values that will remain constant to avoid unuseful recomputation.
+#[derive(Debug)]
+struct Constants {
+    omega_0_inv: FourTerms,
+    changes: Vec<f64>
+}
 
 /// Holds a set of Fourier coefficients. 
 #[derive(Debug)]
@@ -27,204 +158,5 @@ impl fmt::Display for CoeffsSet {
             s.push_str(&format!("{}:\t+{:?}\n\t-{:?}\n", i, self.ppos[i], self.nneg[i]));
         }
         write!(f, "{}", s)
-    }
-}
-
-/// Integrates a cubic spline path and returns a set of 
-/// Fourier coefficients. 
-/// The path is described as 
-/// (x(t), y(t)) = (sx(t), sy(t)), so that we integrate
-/// sx(t) + i * sy(t)
-#[allow(dead_code)]
-pub fn compute_fourier_coeff(sx: & Spline, sy: & Spline, n: usize) -> CoeffsSet {
-    let (t_i, t_f) = (sx.start(), sx.end());
-    assert_eq!(t_i, sy.start());
-    assert_eq!(t_f, sy.end());
-    assert_eq!(sx.num_parts(), sy.num_parts());
-
-    let period = t_f - t_i;
-    let omega_0 = 2.0 * PI / period;
-    
-    let mut coeffs = CoeffsSet::new(n);
-    
-    let changes = sx.changes();
-    let num_parts = changes.len()-1;
-
-    let mut vx = CubicIntegrator::new(t_i, omega_0);
-    let mut vy = CubicIntegrator::new(t_i, omega_0);
-
-    for i in 0..num_parts {
-        let t2 = changes[i+1];
-        vx.next_step(sx.part(i), t2);
-        vy.next_step(sy.part(i), t2);
-        add_splines_contributions(&mut coeffs, &vx, &vy);
-    };
-
-
-    for i in 0..coeffs.nneg.len() {
-        coeffs.ppos[i] /= period;
-        coeffs.nneg[i] /= period;
-    }
-
-    coeffs
-}
-
-/// As integration is additive, adds to coeffset the contribution
-/// to the integral due to CubicIntegrators vx (along x axis) and 
-/// vy (along y axis).
-#[allow(dead_code)]
-fn add_splines_contributions(coeffs: &mut CoeffsSet, vx: &CubicIntegrator, vy: &CubicIntegrator) {
-    let n = coeffs.ppos.len();
-    assert_eq!(n, coeffs.nneg.len());
-
-    for i in 1..n {
-        //contribution of X spline
-        let p_contr_x = integral_12(vx, i, false);
-        let n_contr_x = integral_12(vx, i, true);
-
-        coeffs.ppos[i] += p_contr_x;         
-        coeffs.nneg[i] += n_contr_x;
-
-        //contribution of Y spline
-        let mut p_contr_y = integral_12(vy, i, false);
-        let mut n_contr_y = integral_12(vy, i, true);
-
-        coeffs.ppos[i] += p_contr_y.times_j();
-        coeffs.nneg[i] += n_contr_y.times_j();
-        }
-    // ok this is not optimal.
-    // but it will be ok
-}
-
-/// Integrates CubicIntegrator. 
-fn integral_12(v: &CubicIntegrator, k_index: usize, negative: bool) -> Complex {
-    let k: f64 = if negative { (k_index as f64)*(-1.0)}
-                 else {k_index as f64};
-    let k_sq = k.powf(2.0);
-    let k_cu = k.powf(3.0);
-    let k_fo = k.powf(4.0);
-    let arg1 = -v.omega_0*k*v.t1;
-    let arg2 = -v.omega_0*k*v.t2;
-
-    let cos1 = arg1.cos();       let sin1 = arg1.sin();
-    let cos2 = arg2.cos();       let sin2 = arg2.sin();
-
-    let term_1_re = (-sin1 * v.r1.m1 / k ) + 
-                    ( cos1 * v.r1.m2 / k_sq) +
-                    ( sin1 * v.r1.m3 / k_cu) +
-                    (-cos1 * v.r1.m4 / k_fo);
-                    
-    let term_1_im = ( cos1 * v.r1.m1 / k ) + 
-                    ( sin1 * v.r1.m2 / k_sq) +
-                    (-cos1 * v.r1.m3 / k_cu) +
-                    (-sin1 * v.r1.m4 / k_fo);
-
-    let term_2_re = (-sin2 * v.r2.m1 / k ) + 
-                    ( cos2 * v.r2.m2 / k_sq) +
-                    ( sin2 * v.r2.m3 / k_cu) +
-                    (-cos2 * v.r2.m4 / k_fo);
-
-    let term_2_im = ( cos2 * v.r2.m1 / k ) + 
-                    ( sin2 * v.r2.m2 / k_sq) +
-                    (-cos2 * v.r2.m3 / k_cu) +
-                    (-sin2 * v.r2.m4 / k_fo);
-    
-    // println!("(t1, t2) = ({}, {}) k = {} \t| {} + {}*i", v.t1, v.t2, k_index, term_1_re, term_1_im);
-    // println!("\t\t\t\t| {} + {}*i", term_2_re, term_2_im);
-    Complex {
-        re: term_2_re - term_1_re,
-        im: term_2_im - term_1_im,
-    }
-}
-
-/// Set of 4 variables, meaningless until you make
-/// calculations by youself... 
-#[derive(Clone, Copy)]
-struct VarSet {
-    m1: f64,
-    m2: f64,
-    m3: f64,
-    m4: f64,
-}
-
-impl VarSet {
-    fn new_c(t: f64, t_sq: f64, t_cu: f64, sp: SplinePart) -> VarSet {
-        VarSet {
-            m1: sp.a*t_cu +    sp.b*t_sq +     sp.c*t +     sp.d,
-            m2:            3.0*sp.a*t_sq + 2.0*sp.b*t +     sp.c,
-            m3:                            6.0*sp.a*t + 2.0*sp.b,
-            m4:                                         6.0*sp.a
-        }
-    }
-
-    fn new_r(omega: f64, omega_sq: f64, omega_cu: f64, omega_fo: f64, c: VarSet) -> VarSet {
-        VarSet {
-            m1: c.m1 / omega,
-            m2: c.m2 / omega_sq,
-            m3: c.m3 / omega_cu,
-            m4: c.m4 / omega_fo,
-        }
-    }
-
-    fn new0() -> VarSet {
-        VarSet { m1: 0.0, m2: 0.0, m3: 0.0, m4: 0.0}
-    }
-}
-
-/// Holds variables in order to integrate a part of a spline. 
-/// Proccessing to manual integration will be very
-/// useful in order to understant these mechanisms.
-struct CubicIntegrator {
-    r1: VarSet,
-    r2: VarSet,
-
-    t1: f64,        t2: f64,
-    t1_sq: f64,     t2_sq: f64,
-    t1_cu: f64,     t2_cu: f64,
-
-    omega_0: f64,   omega_0_sq: f64,    omega_0_cu: f64,    omega_0_fo: f64
-}
-
-impl CubicIntegrator {
-    fn next_step(&mut self, sp: SplinePart, t2: f64) {
-        self.t1 = self.t2;
-        self.t1_sq = self.t2_sq;
-        self.t1_cu = self.t2_cu;
-        self.t2 = t2;
-        self.t2_sq = t2.powf(2.0);
-        self.t2_cu = t2.powf(3.0);
-
-        let c1 = VarSet::new_c(self.t1, self.t1_sq, self.t1_cu, sp);
-        let c2 = VarSet::new_c(self.t2, self.t2_sq, self.t2_cu, sp);
-
-// let c1_1 = self.re*self.t1_cu +     self.im*self.t1_sq +     self.c*self.t1 + self.d;
-        // let c1_2 =                     3.0*self.re*self.t1_sq + 2.0*self.im*self.t1 + self.c;
-        // let c1_3 =                                             6.0*self.re*self.t1 + 2.0*self.im;
-        // let c1_4 =                                                                  6.0*self.re;
-        
-        // let c2_1 = self.re*self.t2_cu +     self.im*self.t2_sq +     self.c*self.t2 + self.d;
-        // let c2_2 =                     3.0*self.re*self.t2_sq + 2.0*self.im*self.t2 + self.c;
-        // let c2_3 =                                             6.0*self.re*self.t2 + 2.0*self.im;
-        // let c2_4 =                                                                  6.0*self.re;
-
-        self.r1 = VarSet::new_r(self.omega_0, self.omega_0_sq, self.omega_0_cu, self.omega_0_fo, c1);
-        self.r2 = VarSet::new_r(self.omega_0, self.omega_0_sq, self.omega_0_cu, self.omega_0_fo, c2);
-        // self.r1_1 = c1_1 / self.omega_0;                self.r2_1 = c2_1 / self.omega_0;    
-        // self.r1_2 = c1_2 / self.omega_0_sq;             self.r2_2 = c2_2 / self.omega_0_sq;
-        // self.r1_3 = c1_3 / self.omega_0_cu;             self.r2_3 = c2_3 / self.omega_0_cu;
-        // self.r1_4 = c1_4 / self.omega_0_fo;             self.r2_4 = c2_4 / self.omega_0_fo;  
-    }
-
-    fn new(t_i: f64, omega_0: f64) -> CubicIntegrator {
-        CubicIntegrator {
-            t1: 0.0,             t2: t_i,
-            t1_sq: 0.0,          t2_sq: t_i.powf(2.0),
-            t1_cu: 0.0,          t2_cu: t_i.powf(3.0),
-
-            r1: VarSet::new0(),
-            r2: VarSet::new0(),
-            omega_0: omega_0,                   omega_0_sq: omega_0.powf(2.0),
-            omega_0_cu: omega_0.powf(3.0),      omega_0_fo: omega_0.powf(4.0)  
-        }
     }
 }

@@ -1,4 +1,6 @@
-points = dlmread('points.mat', ' ');
+function piaf(name)
+
+points = dlmread(name, ' ');
 tt = points(:, 1);
 xx = points(:, 2);
 yy = points(:, 3);
@@ -13,3 +15,4 @@ t = linspace(tt(1), tt(length(tt)), 1000);
 x = ppval(sx, t);
 y = ppval(sy, t);
 plot(x, y);
+end

@@ -4,6 +4,7 @@ use gif::{Frame, Encoder, Repeat, SetParameter};
 use std::fs::File;
 use std::io::Error;
 use std::borrow::Cow;
+use std::f64::consts::PI;
 
 use super::fourier::CoeffsSet;
 use super::spline::*;
@@ -165,11 +166,11 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
     
     let vect = vec![0; (w*h) as usize];
     let mut tab_drawing: Box<[u8]> = vect.into_boxed_slice();
-    println!("w: {}, h: {}, {}", w as u16, h as u16, (w*h) as usize);
     
     let mut t: f64 = t_span.0;
     let max = t_span.1;
     let period = t_span.1 - t_span.0;
+    let omega0 = 2.0 * PI / period;
     while t < max {
         // keep what's already drawed
         let mut tab_lines = tab_drawing.clone();
@@ -177,18 +178,20 @@ pub fn draw_fourier_coeff(coeffs: CoeffsSet, filename: &str, w: usize, h: usize,
         let mut x1: f64 = (w as f64) / 2.0;
         let mut y1: f64 = (h as f64) / 2.0;
 
-        let mut x1_usize: usize = w / 2;
-        let mut y1_usize: usize = h / 2;
+        let mut x1_usize: usize = x1 as usize;
+        let mut y1_usize: usize = y1 as usize;
 
-        let mut k_f64: f64 = 1.0_f64;
-        for k in 0..n {
+        let omega0_t = omega0 * t;
+
+        let mut k_f64: f64 = 1.0;
+        for k in 1..n {
             let coeff_pn = (coeffs.ppos[k], coeffs.nneg[k]);
             for (c, neg) in vec![(coeff_pn.0, false),
                                  (coeff_pn.1, true) ] {
                 
-                let sin1 = if neg {  -(k_f64*t).sin()  }
-                           else   {   (k_f64*t).sin()  };
-                let cos1 = (k_f64*t).cos();
+                let sin1 = if neg {  -(k_f64 * omega0_t).sin()  }
+                           else   {   (k_f64 * omega0_t).sin()  };
+                let cos1 = (k_f64 * omega0_t).cos();
                 //   (a+ib)*(cos + i sin)
                 // = a cos - b sin + i (a sin + b cos)
                 let x2 = x1 + (c.re*cos1 - c.im*sin1);
@@ -235,7 +238,7 @@ pub fn draw_spline(sx: Spline, sy: Spline, filename: &str, w: usize, h: usize,
 
     while t < period {
         let (dx, dy) = (sx.eval(t), sy.eval(t));
-        let (x, y) = (cx as f64 + dx, cy as f64 + dy);
+        let (x, y) = (cx as f64 + dx, cy as f64 - dy);
         draw_dot(x as usize, y as usize, 1, &mut *tab, w, h);
         t += period / n as f64;
     }
