@@ -62,30 +62,7 @@ fn matrix_for (tt: &Vec<f64>, mm: &Vec<bool>) -> DMatrix<f64> {
         a[(4*i+1, 4*i+3)] = 1.0;
     
         if i < n-2 {
-            // linear interpolation
-            if mm[i] {
-               /* So that we justa have a cubic polynomial with a = 0, b = 0 */
-               a[(4*i+2, 4*i)]   = 1.0;
-               a[(4*i+3, 4*i+1)] = 1.0;
-            }
-            // cubic spline interpolation
-            else {
-                /* Slope continuousity */
-                a[(4*i+2, 4*i)]   = 3.0*t2_squared;
-                a[(4*i+2, 4*i+1)] = 2.0*tt[i+1];
-                a[(4*i+2, 4*i+2)] = 1.0;
-
-                a[(4*i+2, 4*i+4)] = -3.0*t2_squared;
-                a[(4*i+2, 4*i+5)] = -2.0*tt[i+1];
-                a[(4*i+2, 4*i+6)] = -1.0;
-            
-                /* Concavity continousity */
-                a[(4*i+3, 4*i)]   = 6.0*tt[i+1];
-                a[(4*i+3, 4*i+1)] = 2.0;
-
-                a[(4*i+3, 4*i+4)] = -6.0*tt[i+1];
-                a[(4*i+3, 4*i+5)] = -2.0;
-            }
+            add_cont_equations(&mut a, i, tt[i+1], mm[i]);
         }
     }
 
@@ -106,6 +83,36 @@ fn matrix_for (tt: &Vec<f64>, mm: &Vec<bool>) -> DMatrix<f64> {
         a[(4*n-5, 4*n-6)] = 1.0;   
     }
     a
+}
+
+/// Add to the matrix the coefficients corresponding to the equations of 
+/// continuousity of the 1st and 2nd order derivatives.
+fn add_cont_equations(a: &mut DMatrix<f64>, i: usize, t: f64, is_linear: bool){
+    // linear interpolation
+    if is_linear {
+        /* So that we justa have a cubic polynomial with a = 0, b = 0 */
+        a[(4*i+2, 4*i)]   = 1.0;
+        a[(4*i+3, 4*i+1)] = 1.0;
+    }
+    // cubic spline interpolation
+    else {
+        let t_squared = t * t;
+        /* Slope continuousity */
+        a[(4*i+2, 4*i)]   = 3.0*t_squared;
+        a[(4*i+2, 4*i+1)] = 2.0*t;
+        a[(4*i+2, 4*i+2)] = 1.0;
+
+        a[(4*i+2, 4*i+4)] = -3.0*t_squared;
+        a[(4*i+2, 4*i+5)] = -2.0*t;
+        a[(4*i+2, 4*i+6)] = -1.0;
+    
+        /* Concavity continousity */
+        a[(4*i+3, 4*i)]   = 6.0*t;
+        a[(4*i+3, 4*i+1)] = 2.0;
+
+        a[(4*i+3, 4*i+4)] = -6.0*t;
+        a[(4*i+3, 4*i+5)] = -2.0;
+    }
 }
 
 /// Interpolates points (t[i], x[i]) with a cubic
