@@ -34,7 +34,7 @@ pub struct SplinePart {
 /// Returns the matrix that will have to be solved when
 /// computing a spline interpolating points whose timestamps
 /// are in tt vector 
-fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
+fn matrix_for (tt: &Vec<f64>, mm: &Vec<bool>) -> DMatrix<f64> {
     let n = tt.len();
     let mut a: DMatrix<f64> = DMatrix::zeros(4*(n-1), 4*(n-1));
 
@@ -62,34 +62,49 @@ fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
         a[(4*i+1, 4*i+3)] = 1.0;
     
         if i < n-2 {
-            /* Slope continuousity */
-            a[(4*i+2, 4*i)]   = 3.0*t2_squared;
-            a[(4*i+2, 4*i+1)] = 2.0*tt[i+1];
-            a[(4*i+2, 4*i+2)] = 1.0;
+            // linear interpolation
+            if mm[i] {
+               /* So that we justa have a cubic polynomial with a = 0, b = 0 */
+               a[(4*i+2, 4*i)]   = 1.0;
+               a[(4*i+3, 4*i+1)] = 1.0;
+            }
+            // cubic spline interpolation
+            else {
+                /* Slope continuousity */
+                a[(4*i+2, 4*i)]   = 3.0*t2_squared;
+                a[(4*i+2, 4*i+1)] = 2.0*tt[i+1];
+                a[(4*i+2, 4*i+2)] = 1.0;
 
-            a[(4*i+2, 4*i+4)] = -3.0*t2_squared;
-            a[(4*i+2, 4*i+5)] = -2.0*tt[i+1];
-            a[(4*i+2, 4*i+6)] = -1.0;
-        
-            /* Concavity continousity */
-            a[(4*i+3, 4*i)]   = 6.0*tt[i+1];
-            a[(4*i+3, 4*i+1)] = 2.0;
+                a[(4*i+2, 4*i+4)] = -3.0*t2_squared;
+                a[(4*i+2, 4*i+5)] = -2.0*tt[i+1];
+                a[(4*i+2, 4*i+6)] = -1.0;
+            
+                /* Concavity continousity */
+                a[(4*i+3, 4*i)]   = 6.0*tt[i+1];
+                a[(4*i+3, 4*i+1)] = 2.0;
 
-            a[(4*i+3, 4*i+4)] = -6.0*tt[i+1];
-            a[(4*i+3, 4*i+5)] = -2.0;
+                a[(4*i+3, 4*i+4)] = -6.0*tt[i+1];
+                a[(4*i+3, 4*i+5)] = -2.0;
+            }
         }
     }
 
     /* Starting & ending slopes are 0 : two missing eqations */
-    let ti_squared = tt[0] * tt[0];
-    a[(4*n-6, 0)] = ti_squared;
-    a[(4*n-6, 1)] = tt[0];
-    a[(4*n-6, 2)] = 1.0;
+    if mm[0] {
+        a[(4*n-6, 0)] = 1.0;
+    } else {
+        a[(4*n-6, 0)] = tt[0] * tt[0];
+        a[(4*n-6, 1)] = tt[0];
+        a[(4*n-6, 2)] = 1.0;
+    }
     
-    let tf_squared = tt[n-1] * tt[n-1];
-    a[(4*n-5, 4*n-8)] = tf_squared;
-    a[(4*n-5, 4*n-7)] = tt[n-1];
-    a[(4*n-5, 4*n-6)] = 1.0;   
+    if mm[n-1] {
+        a[(4*n-5, 4*n-8)] = 1.0;
+    } else {
+        a[(4*n-5, 4*n-8)] = tt[n-1] * tt[n-1];
+        a[(4*n-5, 4*n-7)] = tt[n-1];
+        a[(4*n-5, 4*n-6)] = 1.0;   
+    }
     a
 }
 
@@ -98,7 +113,7 @@ fn matrix_for (tt: &Vec<f64>) -> DMatrix<f64> {
 /// May fail if some timestamps are equal, thus trying to
 /// inverse a matrix which determinant is 0.
 #[allow(dead_code)]
-pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
+pub fn interpolate (xx: &Vec<f64>, tt: &Vec<f64>, mm: &Vec<bool>) -> Spline {
     assert_eq!(xx.len(), tt.len());
     let n = xx.len();
     let mut s = Spline {parts: Vec::new(),
@@ -106,7 +121,7 @@ pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
                         current: 0, start: xx[0],
                         end: xx[xx.len()-1]};
 
-    let a: DMatrix<f64> = matrix_for(&tt);
+    let a: DMatrix<f64> = matrix_for(&tt, &mm);
     let mut b: DVector<f64> = DVector::zeros(4*(n-1));
 
     // Building `b` vector:
@@ -138,10 +153,11 @@ pub fn interpolate (xx: Vec<f64>, tt: Vec<f64>) -> Spline {
 /// that share the same timestamps in t. In particular, the coordinates
 /// of points to interpolate for the drawing share the same t.
 #[allow(dead_code)]
-pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: Vec<f64>) -> Vec<Spline> {
+pub fn interpolate_coords(xxx: Vec<Vec<f64>>, tt: &Vec<f64>, mm: &Vec<bool>)
+ -> Vec<Spline> {
     let n = tt.len();
     let count = xxx.len();
-    let a = matrix_for(&tt);
+    let a = matrix_for(&tt, &mm);
     // println!("A = {}", a);
     let dec = a.lu();
 

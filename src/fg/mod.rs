@@ -85,7 +85,7 @@ pub fn parse() -> Result<(), FgError> {
     }
     else if ctype == SPLINE {
         let set = read::read_file(input)?;
-        let ss = spline::interpolate_coords(vec![set.xx, set.yy], set.tt);
+        let ss = spline::interpolate_coords(vec![set.xx, set.yy], &set.tt, &set.mm);
         let sx = ss[0].clone();
         let sy = ss[1].clone();
 
@@ -94,7 +94,7 @@ pub fn parse() -> Result<(), FgError> {
     }
     else {
         let set = read::read_file(input)?;
-        let ss = spline::interpolate_coords(vec![set.xx, set.yy], set.tt);
+        let ss = spline::interpolate_coords(vec![set.xx, set.yy], &set.tt, &set.mm);
         let sx = ss[0].clone();
         let sy = ss[1].clone();
         

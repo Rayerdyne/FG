@@ -31,7 +31,7 @@ impl fmt::Display for ReadingError {
 }
 
 /// Holds the information needed for representing a point (a time and two
-/// coordinates) plus the interpolation method that will be used BEFORE 
+/// coordinates) plus the interpolation method that will be used AFTER 
 /// reaching that point, wether a line or a spline.
 /// Members:
 /// 
@@ -46,24 +46,26 @@ struct Point {
 }
 
 /// Holds a set of point to be interpolated
-/// Each point has coordinates x, y and timestamp t. 
-/// 
-/// fromStr is implemented, for formatting:
-/// (x, y, t)
-/// (x, y, t)  ...
+/// Each point has coordinates `x`, `y`, a timestamp `t` and a "method" boolean 
+/// that will be `true` if the interpolation method after that point is 
+/// linear.
 #[allow(dead_code)]
 pub struct PointsSet {
     pub xx: Vec<f64>,
     pub yy: Vec<f64>,
     pub tt: Vec<f64>,
+    pub mm: Vec<bool>
 }
 
 /// Parses a Point, the data should be formatted as:
-/// `t: (x, y)`
+/// `t: type (x, y)`
 /// Where `t` is the virtual time at which the point will be reached,
 ///       `x`, `y` are the coordinates of the point. Note that the axis will be
 /// placed like in mathematics (origin at the center, `x` points to the right
 /// and `y` to the left)
+///       `type` is the interpolation method after that points, this will be 
+/// linear if `type == "l"`, and a cubic spline otherwise. In particular, we 
+/// will use `"s"` for the clarity, but not providing it will also work.
 impl FromStr for Point {
     type Err = ParseFloatError;
 
@@ -73,14 +75,16 @@ impl FromStr for Point {
         let parsed_t = parts[0].trim()
                                .parse::<f64>()?;
 
-        let coords: Vec<&str> = parts[1].trim()
-                    .trim_matches( |c| c == '(' || c == ')' )
+        let right_parts: Vec<&str> = parts[1].trim().split('(').collect();
+        let is_line = if right_parts[0].contains("l") {true} else {false};
+        let coords: Vec<&str> = right_parts[1].trim()
+                    .trim_end_matches(|c| c == '(')
                     .split(',')
                     .collect();
         let parsed_x: f64 = coords[0].trim().parse::<f64>()?;
         let parsed_y: f64 = coords[1].trim().parse::<f64>()?;
 
-        Ok(Point{x: parsed_x, y: parsed_y, t: parsed_t})
+        Ok(Point{x: parsed_x, y: parsed_y, t: parsed_t, is_line: is_line})
     } 
 }
 
@@ -100,6 +104,7 @@ impl FromStr for PointsSet {
         let mut parsed_xx = Vec::<f64>::new();
         let mut parsed_yy = Vec::<f64>::new();
         let mut parsed_tt = Vec::<f64>::new();
+        let mut parsed_mm = Vec::<bool>::new();
 
         for point_data in points_data {
             let p = Point::from_str(point_data);
@@ -108,6 +113,7 @@ impl FromStr for PointsSet {
                     parsed_xx.push(point.x);
                     parsed_yy.push(point.y);
                     parsed_tt.push(point.t);
+                    parsed_mm.push(point.is_line);
                 }
                 Err(e) => return Err(ReadingError::ParseError(e))
             }
@@ -117,6 +123,7 @@ impl FromStr for PointsSet {
             xx: parsed_xx,
             yy: parsed_yy, 
             tt: parsed_tt,
+            mm: parsed_mm
         })
     }
 }
