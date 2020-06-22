@@ -246,20 +246,3 @@ pub fn draw_spline(sx: Spline, sy: Spline, filename: &str, w: usize, h: usize,
     Ok(())
 }
 
-/** Poor test I wrote to check some function. */
-#[allow(dead_code)]
-pub fn gotest(a: usize, b: usize, c: usize, d: usize) {
-    let mut f = File::create("hello.gif").expect("couldn't create file");
-
-    let (w, h) = (300 as usize, 200 as usize);
-    let global_palette = &[0x00, 0x00, 0xFF,
-                           0xFF, 0x00, 0x00];
-    let mut gif = MyGif::new(&mut f, w as u16, h as u16, global_palette);
-
-    let vect = vec![0; w*h];
-    let mut tab: Box<[u8]> = vect.into_boxed_slice();
-    draw_line(a, b, c, d, 1, &mut *tab, w, h);
-    draw_line(100, 100, 150, 0, 1, &mut *tab, w, h);
-    draw_line(100, 100, 50, 200, 1, &mut *tab, w, h);
-    gif.write_frame(&*tab);
-}

@@ -51,6 +51,7 @@ const DEF_HEIGHT: usize = 200;
 const DEF_WIDTH: usize = 300;
 const DEF_N_STEPS: usize = 200;
 const DEF_N_COEFFS: usize = 5;
+
 /// Parses arguments provided to the program, and process to execution
 #[allow(dead_code)]
 pub fn parse() -> Result<(), FgError> {
@@ -166,11 +167,6 @@ fn app_args() -> clap::ArgMatches<'static> {
             .long("type")
             .short("t"))
         .get_matches()
-}
-
-#[allow(dead_code)]
-pub fn test_gif(a: usize, b: usize, c: usize, d: usize) {
-    fgif::gotest(a, b, c, d);
 }
 
 /// Get a color desribed in argument, default value if not present.
