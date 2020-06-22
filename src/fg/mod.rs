@@ -66,7 +66,7 @@ pub fn parse() -> Result<(), FgError> {
     let gw = get_value(& matches, "width", DEF_WIDTH);
     let gh = get_value(& matches, "width", DEF_HEIGHT);
     let n_steps = get_value(& matches, "width", DEF_N_STEPS);
-    let n_coeffs = get_value(& matches, "n_coeffs", DEF_N_COEFFS);
+    let n_coeffs = get_value(& matches, "n_coeffs", DEF_N_COEFFS) + 1;
 
     let ctype = match matches.value_of("test").unwrap_or("std") {
         "std" => STD,
