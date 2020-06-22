@@ -2,3 +2,6 @@
 **/*.rs.bk
 /old
 src/test/rs
+*.gif
+points.mat
+piaf.m
