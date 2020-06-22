@@ -111,7 +111,7 @@ pub fn parse() -> Result<(), FgError> {
 
 fn app_args() -> clap::ArgMatches<'static> {
     App::new("fg")
-        .version("0.1.0")
+        .version("0.2.0")
         .author("François Straet")
         .about("Drawings with Fourier series")
         .arg(Arg::with_name("input")

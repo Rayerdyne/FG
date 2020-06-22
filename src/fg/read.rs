@@ -76,9 +76,9 @@ impl FromStr for Point {
                                .parse::<f64>()?;
 
         let right_parts: Vec<&str> = parts[1].trim().split('(').collect();
-        let is_line = if right_parts[0].contains("l") {true} else {false};
+        let is_line = if right_parts[0].starts_with("l") {true} else {false};
         let coords: Vec<&str> = right_parts[1].trim()
-                    .trim_end_matches(|c| c == '(')
+                    .trim_end_matches(|c| c == ')')
                     .split(',')
                     .collect();
         let parsed_x: f64 = coords[0].trim().parse::<f64>()?;

@@ -62,32 +62,28 @@ fn matrix_for (tt: &Vec<f64>, mm: &Vec<bool>) -> DMatrix<f64> {
         a[(4*i+1, 4*i+3)] = 1.0;
     
         if i < n-2 {
-            add_cont_equations(&mut a, i, tt[i+1], mm[i]);
+            add_cont_equations(&mut a, tt[i+1], i, mm[i])
         }
     }
 
     /* Starting & ending slopes are 0 : two missing eqations */
-    if mm[0] {
-        a[(4*n-6, 0)] = 1.0;
+    if mm[n-2] {
+        a[(4*n-6, 4*n-7)] = 1.0;
+        a[(4*n-5, 4*n-8)] = 1.0;
     } else {
         a[(4*n-6, 0)] = tt[0] * tt[0];
         a[(4*n-6, 1)] = tt[0];
         a[(4*n-6, 2)] = 1.0;
-    }
-    
-    if mm[n-1] {
-        a[(4*n-5, 4*n-8)] = 1.0;
-    } else {
+
         a[(4*n-5, 4*n-8)] = tt[n-1] * tt[n-1];
         a[(4*n-5, 4*n-7)] = tt[n-1];
-        a[(4*n-5, 4*n-6)] = 1.0;   
+        a[(4*n-5, 4*n-6)] = 1.0; 
     }
+    
     a
 }
 
-/// Add to the matrix the coefficients corresponding to the equations of 
-/// continuousity of the 1st and 2nd order derivatives.
-fn add_cont_equations(a: &mut DMatrix<f64>, i: usize, t: f64, is_linear: bool){
+fn add_cont_equations(a: &mut DMatrix<f64>, t: f64, i: usize, is_linear: bool){
     // linear interpolation
     if is_linear {
         /* So that we justa have a cubic polynomial with a = 0, b = 0 */

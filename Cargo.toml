@@ -1,6 +1,6 @@
 [package]
 name = "fg"
-version = "0.1.0"
+version = "0.2.0"
 repository = "https://github.com/Rayerdyne/FG"
 authors = ["Rayerdyne <francois.straet@gmail.com>"]
 edition = "2018"
